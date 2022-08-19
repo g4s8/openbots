@@ -27,12 +27,15 @@ func main() {
 
 	f, err := os.Open(configPath)
 	if err != nil {
-		log.Fatalf("Failed to open config at `%s`: %v", configPath, err)
+		log.Fatalf("Failed to open config at: %v", err)
 	}
 
 	spec, err := spec.ParseYaml(f)
 	if err != nil {
-		log.Fatal("Failed to parse bot.yml: ", err)
+		log.Fatalf("Failed to parse config: %v", err)
+	}
+	if err := spec.Validate(); err != nil {
+		log.Fatalf("Config validation failed: %v", err)
 	}
 
 	bot, err := bot.NewFromSpec(spec.Bot)

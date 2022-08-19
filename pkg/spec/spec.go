@@ -105,3 +105,22 @@ func ParseYaml(r io.Reader) (*Spec, error) {
 	}
 	return &spec, nil
 }
+
+var (
+	ErrInvalidSpec      = errors.New("invalid configuration")
+	ErrNoTokenProvided  = errors.New("no token provided")
+	ErrNoHandlersConfig = errors.New("no handlers configured")
+)
+
+func (s *Spec) Validate() error {
+	if s.Bot == nil {
+		return ErrInvalidSpec
+	}
+	if s.Bot.Token == "" {
+		return ErrNoTokenProvided
+	}
+	if len(s.Bot.Handlers) == 0 {
+		return ErrNoHandlersConfig
+	}
+	return nil
+}
