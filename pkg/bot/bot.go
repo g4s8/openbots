@@ -50,13 +50,13 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 		var handler types.Handler
 
 		if h.Trigger.Message != nil {
-			filter, err = handlers.NewOnMessageFromSpec(h.Trigger.Message)
+			filter, err = handlers.NewMessageFilterFromSpec(h.Trigger.Message)
 			if err != nil {
 				return nil, errors.Wrap(err, "create message event filter")
 			}
 		}
 		if h.Trigger.Callback != nil {
-			filter, err = handlers.NewOnCallbackFromSpec(h.Trigger.Callback)
+			filter, err = handlers.NewCallbackFilterFromSpec(h.Trigger.Callback)
 			if err != nil {
 				return nil, errors.Wrap(err, "create callback event filter")
 			}

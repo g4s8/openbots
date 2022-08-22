@@ -8,125 +8,24 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Spec is a base struct for a bot specification file.
 type Spec struct {
 	Bot *Bot `yaml:"bot"`
 }
 
+// Bot spec includes bot configuration and handlers.
 type Bot struct {
 	Token    string     `yaml:"token" env:"BOT_TOKEN"`
 	Handlers []*Handler `yaml:"handlers"`
 }
 
+// Handler specification declares bot handlers.
 type Handler struct {
 	Trigger *Trigger `yaml:"on"`
 	Replies []*Reply `yaml:"reply"`
 }
 
-type Trigger struct {
-	Message  *MessageTrigger  `yaml:"message"`
-	Callback *CallbackTrigger `yaml:"callback"`
-}
-
-func (t *MessageTrigger) UnmarshalYAML(node *yaml.Node) error {
-	switch node.Kind {
-	case yaml.ScalarNode, yaml.SequenceNode, yaml.AliasNode:
-		var s yamlScalarOrSeq
-		if err := node.Decode(&s); err != nil {
-			return err
-		}
-		t.Text = s.Value
-	case yaml.MappingNode:
-		schema := &struct {
-			Text    yamlScalarOrSeq `yaml:"text"`
-			Command string          `yaml:"command"`
-		}{}
-		if err := node.Decode(schema); err != nil {
-			return err
-		}
-		t.Text = schema.Text.Value
-		t.Command = schema.Command
-	default:
-		return errors.Errorf("unexpected node kind: %v", node.Kind)
-	}
-	return nil
-}
-
-type yamlScalarOrSeq struct {
-	Value []string
-}
-
-func (s *yamlScalarOrSeq) UnmarshalYAML(node *yaml.Node) error {
-	switch node.Kind {
-	case yaml.ScalarNode:
-		s.Value = []string{node.Value}
-	case yaml.SequenceNode:
-		s.Value = make([]string, 0, len(node.Content))
-		for i, node := range node.Content {
-			if node.Kind == yaml.ScalarNode {
-				s.Value = append(s.Value, node.Value)
-			} else if node.Kind == yaml.AliasNode && node.Alias.Kind == yaml.ScalarNode {
-				s.Value = append(s.Value, node.Alias.Value)
-			} else {
-				return errors.Errorf("%d: expected scalar node, got %v", i, node.Kind)
-			}
-		}
-	case yaml.AliasNode:
-		return s.UnmarshalYAML(node.Alias)
-	default:
-		return errors.Errorf("unexpected node kind: %v", node.Kind)
-	}
-	return nil
-}
-
-type MessageTrigger struct {
-	Text    []string
-	Command string
-}
-
-type CallbackTrigger struct {
-	Data string
-}
-
-func (ct *CallbackTrigger) UnmarshalYAML(node *yaml.Node) error {
-	switch node.Kind {
-	case yaml.ScalarNode:
-		ct.Data = node.Value
-	case yaml.AliasNode:
-		return ct.UnmarshalYAML(node.Alias)
-	case yaml.MappingNode:
-		var schema struct {
-			Data string `yaml:"data"`
-		}
-		if err := node.Decode(&schema); err != nil {
-			return err
-		}
-		ct.Data = schema.Data
-	default:
-		return errors.Errorf("unexpected node kind: %v", node.Kind)
-	}
-	return nil
-}
-
-type Reply struct {
-	Message *MessageReply `yaml:"message"`
-}
-
-type MessageReply struct {
-	Text   string       `yaml:"text"`
-	Markup *ReplyMarkup `yaml:"markup"`
-}
-
-type InlineButton struct {
-	Text     string `yaml:"text"`
-	URL      string `yaml:"url"`
-	Callback string `yaml:"callback"`
-}
-
-type ReplyMarkup struct {
-	Keyboard       [][]string       `yaml:"keyboard"`
-	InlineKeyboard [][]InlineButton `yaml:"inlineKeyboard"`
-}
-
+// ParseYaml decodes YAML input into a Spec struct.
 func ParseYaml(r io.Reader) (*Spec, error) {
 	var spec Spec
 	if err := yaml.NewDecoder(r).Decode(&spec); err != nil {
@@ -138,12 +37,7 @@ func ParseYaml(r io.Reader) (*Spec, error) {
 	return &spec, nil
 }
 
-var (
-	ErrInvalidSpec      = errors.New("invalid configuration")
-	ErrNoTokenProvided  = errors.New("no token provided")
-	ErrNoHandlersConfig = errors.New("no handlers configured")
-)
-
+// Validate specification.
 func (s *Spec) Validate() error {
 	if s.Bot == nil {
 		return ErrInvalidSpec
