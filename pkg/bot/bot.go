@@ -43,15 +43,35 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "create bot API")
 	}
+	botAPI.Debug = true
 	bot := New(botAPI)
 	for _, h := range s.Handlers {
-		filter, err := handlers.NewOnMessageFromSpec(h.Trigger.Message)
-		if err != nil {
-			return nil, errors.Wrap(err, "create event filter")
+		var filter types.EventFilter
+		var handler types.Handler
+
+		if h.Trigger.Message != nil {
+			filter, err = handlers.NewOnMessageFromSpec(h.Trigger.Message)
+			if err != nil {
+				return nil, errors.Wrap(err, "create message event filter")
+			}
 		}
-		handler, err := handlers.NewReplyFromSpec(h.Replies)
-		if err != nil {
-			return nil, errors.Wrap(err, "create handler")
+		if h.Trigger.Callback != nil {
+			filter, err = handlers.NewOnCallbackFromSpec(h.Trigger.Callback)
+			if err != nil {
+				return nil, errors.Wrap(err, "create callback event filter")
+			}
+		}
+		if h.Replies != nil {
+			handler, err = handlers.NewReplyFromSpec(h.Replies)
+			if err != nil {
+				return nil, errors.Wrap(err, "create handler")
+			}
+		}
+		if filter == nil {
+			return nil, errors.New("no event filter")
+		}
+		if handler == nil {
+			return nil, errors.New("no handler")
 		}
 		bot.Handle(filter, handler)
 	}
