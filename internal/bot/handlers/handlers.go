@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/g4s8/openbots-go/pkg/spec"
 	"github.com/g4s8/openbots-go/pkg/types"
@@ -74,4 +75,19 @@ func NewOnMessageFromSpec(s *spec.MessageTrigger) (types.EventFilter, error) {
 		return &anyOf, nil
 	}
 	return nil, errors.New("unknown trigger")
+}
+
+type OnCallback struct {
+	callback string
+}
+
+func (h *OnCallback) Check(ctx context.Context, update *telegram.Update) bool {
+	return update.CallbackQuery != nil && update.CallbackQuery.Data == h.callback
+}
+
+func NewOnCallbackFromSpec(s *spec.CallbackTrigger) (types.EventFilter, error) {
+	fmt.Printf("Created eventFilter for callback data: %s\n", s.Data)
+	return &OnCallback{
+		callback: s.Data,
+	}, nil
 }

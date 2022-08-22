@@ -23,7 +23,8 @@ type Handler struct {
 }
 
 type Trigger struct {
-	Message *MessageTrigger `yaml:"message"`
+	Message  *MessageTrigger  `yaml:"message"`
+	Callback *CallbackTrigger `yaml:"callback"`
 }
 
 func (t *MessageTrigger) UnmarshalYAML(node *yaml.Node) error {
@@ -82,6 +83,30 @@ type MessageTrigger struct {
 	Command string
 }
 
+type CallbackTrigger struct {
+	Data string
+}
+
+func (ct *CallbackTrigger) UnmarshalYAML(node *yaml.Node) error {
+	switch node.Kind {
+	case yaml.ScalarNode:
+		ct.Data = node.Value
+	case yaml.AliasNode:
+		return ct.UnmarshalYAML(node.Alias)
+	case yaml.MappingNode:
+		var schema struct {
+			Data string `yaml:"data"`
+		}
+		if err := node.Decode(&schema); err != nil {
+			return err
+		}
+		ct.Data = schema.Data
+	default:
+		return errors.Errorf("unexpected node kind: %v", node.Kind)
+	}
+	return nil
+}
+
 type Reply struct {
 	Message *MessageReply `yaml:"message"`
 }
@@ -91,8 +116,15 @@ type MessageReply struct {
 	Markup *ReplyMarkup `yaml:"markup"`
 }
 
+type InlineButton struct {
+	Text     string `yaml:"text"`
+	URL      string `yaml:"url"`
+	Callback string `yaml:"callback"`
+}
+
 type ReplyMarkup struct {
-	Keyboard [][]string `yaml:"keyboard"`
+	Keyboard       [][]string       `yaml:"keyboard"`
+	InlineKeyboard [][]InlineButton `yaml:"inlineKeyboard"`
 }
 
 func ParseYaml(r io.Reader) (*Spec, error) {
