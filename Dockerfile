@@ -5,10 +5,8 @@ RUN apk add --no-cache --update ca-certificates
 RUN apk add --no-cache --update \
     ca-certificates \
     gcc \
-    # linux-headers \
     make \
     musl-dev
-    # git
 
 WORKDIR /build
 
@@ -19,21 +17,15 @@ RUN go mod download
 COPY ./cmd /build/cmd
 COPY ./internal /build/internal
 COPY ./pkg /build/pkg
+COPY Makefile /build/Makefile
 
-RUN go build  \
-  -ldflags "-linkmode external -extldflags -static" \
-  -o bot \
-  /build/cmd/bot
-RUN go build  \
-  -ldflags "-linkmode external -extldflags -static" \
-  -o validator \
-  /build/cmd/validator
+RUN make V=1 bin
 
-FROM scratch
+FROM alpine:latest
 
 WORKDIR /w
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /build/bot /w/bot
-COPY --from=builder /build/validator /w/validator
+COPY --from=builder /build/bin/bot /w/bot
+COPY --from=builder /build/bin/validator /w/validator
 
 CMD [ "/w/bot", "-config", "/w/config.yml"]
