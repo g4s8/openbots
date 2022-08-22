@@ -24,11 +24,16 @@ RUN go build  \
   -ldflags "-linkmode external -extldflags -static" \
   -o bot \
   /build/cmd/bot
+RUN go build  \
+  -ldflags "-linkmode external -extldflags -static" \
+  -o validator \
+  /build/cmd/validator
 
 FROM scratch
 
 WORKDIR /w
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /build/bot /w/bot
+COPY --from=builder /build/validator /w/validator
 
 CMD [ "/w/bot", "-config", "/w/config.yml"]
