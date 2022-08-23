@@ -10,9 +10,30 @@ type Trigger struct {
 	Callback *CallbackTrigger `yaml:"callback"`
 }
 
+func (t *Trigger) validate() (errs []error) {
+	errs = make([]error, 0)
+	if t.Message == nil && t.Callback == nil {
+		errs = append(errs, errors.New("empty trigger"))
+	}
+	if t.Message != nil {
+		errs = append(errs, t.Message.validate()...)
+	}
+	if t.Callback != nil {
+		errs = append(errs, t.Callback.validate()...)
+	}
+	return
+}
+
 type MessageTrigger struct {
 	Text    []string
 	Command string
+}
+
+func (t *MessageTrigger) validate() []error {
+	if len(t.Text) == 0 && t.Command == "" {
+		return []error{errors.New("empty message trigger")}
+	}
+	return []error{}
 }
 
 func (t *MessageTrigger) UnmarshalYAML(node *yaml.Node) error {
@@ -41,6 +62,13 @@ func (t *MessageTrigger) UnmarshalYAML(node *yaml.Node) error {
 
 type CallbackTrigger struct {
 	Data string
+}
+
+func (t *CallbackTrigger) validate() []error {
+	if t.Data == "" {
+		return []error{errors.New("empty callback trigger")}
+	}
+	return []error{}
 }
 
 func (ct *CallbackTrigger) UnmarshalYAML(node *yaml.Node) error {
