@@ -12,7 +12,7 @@ import (
 var _ types.Handler = (*Reply)(nil)
 
 // Replier func reply to message in chat.
-type Replier func(chatID int64, bot *telegram.BotAPI) error
+type Replier func(ctx context.Context, chatID int64, bot *telegram.BotAPI) error
 
 // Reply handler processes telegram updates and reply to them.
 type Reply struct {
@@ -45,7 +45,7 @@ func (h *Reply) Handle(ctx context.Context, update *telegram.Update,
 	bot *telegram.BotAPI) error {
 	var err error
 	for _, replier := range h.repliers {
-		err = multierr.Append(err, replier(chatID(update), bot))
+		err = multierr.Append(err, replier(ctx, chatID(update), bot))
 	}
 	return err
 }

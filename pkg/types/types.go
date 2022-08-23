@@ -12,6 +12,11 @@ type Handler interface {
 	Handle(context.Context, *telegram.Update, *telegram.BotAPI) error
 }
 
+// StateHandler for state updates.
+type StateHandler interface {
+	Handle(context.Context, *telegram.Update, State) (State, error)
+}
+
 // EventFilter checks that telegram update could be handlerd.
 type EventFilter interface {
 	Check(context.Context, *telegram.Update) bool
@@ -21,6 +26,9 @@ type EventFilter interface {
 type Bot interface {
 	// Handle register bot's handler with filter.
 	Handle(EventFilter, Handler)
+
+	// HandleState register bot's state handler with filter.
+	HandleState(EventFilter, StateHandler)
 
 	// Start bot.
 	Start() error

@@ -15,14 +15,16 @@ type Spec struct {
 
 // Bot spec includes bot configuration and handlers.
 type Bot struct {
-	Token    string     `yaml:"token" env:"BOT_TOKEN"`
-	Handlers []*Handler `yaml:"handlers"`
+	Token    string            `yaml:"token" env:"BOT_TOKEN"`
+	State    map[string]string `yaml:"state"`
+	Handlers []*Handler        `yaml:"handlers"`
 }
 
 // Handler specification declares bot handlers.
 type Handler struct {
 	Trigger *Trigger `yaml:"on"`
 	Replies []*Reply `yaml:"reply"`
+	State   *State   `yaml:"state"`
 }
 
 // ParseYaml decodes YAML input into a Spec struct.
@@ -33,6 +35,9 @@ func ParseYaml(r io.Reader) (*Spec, error) {
 	}
 	if err := env.Parse(spec.Bot); err != nil {
 		return nil, errors.Wrap(err, "env")
+	}
+	if spec.Bot.State == nil {
+		spec.Bot.State = make(map[string]string)
 	}
 	return &spec, nil
 }
