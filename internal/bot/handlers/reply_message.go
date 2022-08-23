@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"context"
+
 	"github.com/g4s8/openbots-go/pkg/spec"
+	"github.com/g4s8/openbots-go/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -54,8 +57,12 @@ func messageWithInlinceKeyboard(keyboard [][]inlineButton) messageModifier {
 }
 
 func newMessageReplier(text string, modifiers ...messageModifier) Replier {
-	return func(chatID int64, bot *telegram.BotAPI) error {
-		msg := telegram.NewMessage(chatID, text)
+	return func(ctx context.Context, chatID int64, bot *telegram.BotAPI) error {
+		state := types.StateFromContext(ctx)
+		intp := newInterpolator(state)
+		processed := intp.interpolate(text)
+
+		msg := telegram.NewMessage(chatID, processed)
 		for _, modifier := range modifiers {
 			modifier(&msg)
 		}

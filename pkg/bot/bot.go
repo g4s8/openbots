@@ -15,26 +15,32 @@ import (
 
 var _ types.Bot = (*Bot)(nil)
 
-type State map[string]string
-
 type eventHandler struct {
 	types.EventFilter
 	types.Handler
 }
 
-type Bot struct {
-	handlers []*eventHandler
+type stateHandler struct {
+	types.EventFilter
+	types.StateHandler
+}
 
-	// state  State
+type Bot struct {
+	handlers      []*eventHandler
+	stateHandlers []*stateHandler
+
+	state  types.State
 	botAPI *telegram.BotAPI
 	doneCh chan struct{}
 }
 
 func New(botAPI *telegram.BotAPI) *Bot {
 	return &Bot{
-		handlers: make([]*eventHandler, 0),
-		botAPI:   botAPI,
-		doneCh:   make(chan struct{}),
+		handlers:      make([]*eventHandler, 0),
+		stateHandlers: make([]*stateHandler, 0),
+		state:         make(types.State),
+		botAPI:        botAPI,
+		doneCh:        make(chan struct{}),
 	}
 }
 
@@ -45,9 +51,11 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 	}
 	botAPI.Debug = true
 	bot := New(botAPI)
+	bot.state = types.State(s.State)
 	for _, h := range s.Handlers {
 		var filter types.EventFilter
 		var handler types.Handler
+		var stateHandler types.StateHandler
 
 		if h.Trigger.Message != nil {
 			filter, err = handlers.NewMessageFilterFromSpec(h.Trigger.Message)
@@ -67,19 +75,34 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 				return nil, errors.Wrap(err, "create handler")
 			}
 		}
+		if h.State != nil {
+			stateHandler = handlers.NewStateHandlerFromSpec(h.State)
+			if err != nil {
+				return nil, errors.Wrap(err, "create state handler")
+			}
+		}
 		if filter == nil {
 			return nil, errors.New("no event filter")
 		}
-		if handler == nil {
+		if handler == nil && stateHandler == nil {
 			return nil, errors.New("no handler")
 		}
-		bot.Handle(filter, handler)
+		if handler != nil {
+			bot.Handle(filter, handler)
+		}
+		if stateHandler != nil {
+			bot.HandleState(filter, stateHandler)
+		}
 	}
 	return bot, nil
 }
 
 func (b *Bot) Handle(filter types.EventFilter, h types.Handler) {
 	b.handlers = append(b.handlers, &eventHandler{EventFilter: filter, Handler: h})
+}
+
+func (b *Bot) HandleState(filter types.EventFilter, h types.StateHandler) {
+	b.stateHandlers = append(b.stateHandlers, &stateHandler{EventFilter: filter, StateHandler: h})
 }
 
 func (b *Bot) Start() error {
@@ -111,6 +134,7 @@ func (b *Bot) handleUpdate(upd *telegram.Update) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
+	ctx = types.ContextWithState(ctx, b.state)
 	for _, h := range b.handlers {
 		if !h.Check(ctx, upd) {
 			continue
@@ -119,4 +143,16 @@ func (b *Bot) handleUpdate(upd *telegram.Update) {
 			log.Printf("Handler error: %v\n", err)
 		}
 	}
+	state := b.state
+	for _, h := range b.stateHandlers {
+		var err error
+		if !h.Check(ctx, upd) {
+			continue
+		}
+		state, err = h.Handle(ctx, upd, state)
+		if err != nil {
+			log.Printf("State handler error: %v\n", err)
+		}
+	}
+	b.state = state
 }
