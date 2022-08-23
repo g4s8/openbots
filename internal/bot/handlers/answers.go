@@ -3,49 +3,54 @@ package handlers
 import (
 	"context"
 
-	"github.com/g4s8/openbots-go/pkg/spec"
 	"github.com/g4s8/openbots-go/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"go.uber.org/multierr"
+	"github.com/pkg/errors"
 )
 
-var _ types.Handler = (*Reply)(nil)
+var _ types.Handler = (*MessageReply)(nil)
 
-// Replier func reply to message in chat.
-type Replier func(ctx context.Context, chatID int64, bot *telegram.BotAPI) error
+// MessageReplier func reply to message in chat.
+type MessageReplier func(ctx context.Context, chatID int64, bot *telegram.BotAPI) error
 
-// Reply handler processes telegram updates and reply to them.
-type Reply struct {
-	repliers []Replier
+// MessageReply handler processes telegram updates and reply message to them.
+type MessageReply struct {
+	replier MessageReplier
 }
 
-// NewReplyFromSpec creates reply object from reply specification.
-func NewReplyFromSpec(s []*spec.Reply) (*Reply, error) {
-	var repliers []Replier
-	for _, r := range s {
-		var modifiers []messageModifier
-		if r.Message.Markup != nil && len(r.Message.Markup.Keyboard) > 0 {
-			modifiers = append(modifiers, messageWithKeyboard(r.Message.Markup.Keyboard))
-		}
-		if r.Message.Markup != nil && len(r.Message.Markup.InlineKeyboard) > 0 {
-			modifiers = append(modifiers, messageWithInlinceKeyboard(
-				inlineButtonsFromSpec(r.Message.Markup.InlineKeyboard)))
-		}
-		repliers = append(repliers, newMessageReplier(r.Message.Text, modifiers...))
-	}
-	return NewReply(repliers...), nil
+// NewMessageReply from repliers funcs.
+func NewMessageReply(replier MessageReplier) *MessageReply {
+	return &MessageReply{replier: replier}
 }
 
-// NewReply from repliers funcs.
-func NewReply(repliers ...Replier) *Reply {
-	return &Reply{repliers: repliers}
-}
-
-func (h *Reply) Handle(ctx context.Context, update *telegram.Update,
+func (h *MessageReply) Handle(ctx context.Context, update *telegram.Update,
 	bot *telegram.BotAPI) error {
-	var err error
-	for _, replier := range h.repliers {
-		err = multierr.Append(err, replier(ctx, chatID(update), bot))
+	if err := h.replier(ctx, chatID(update), bot); err != nil {
+		return errors.Wrap(err, "reply message")
 	}
-	return err
+	return nil
+}
+
+type CallbackReply struct {
+	text  string
+	alert bool
+}
+
+func NewCallbackReply(text string, alert bool) *CallbackReply {
+	return &CallbackReply{text: text, alert: alert}
+}
+
+func (h *CallbackReply) Handle(ctx context.Context, update *telegram.Update,
+	bot *telegram.BotAPI) error {
+	if update.CallbackQuery == nil {
+		return errors.New("update is not callback query")
+	}
+
+	resp := telegram.NewCallback(update.CallbackQuery.ID, h.text)
+	resp.ShowAlert = h.alert
+	_, err := bot.Send(resp)
+	if err != nil {
+		return errors.Wrap(err, "send callback response")
+	}
+	return nil
 }

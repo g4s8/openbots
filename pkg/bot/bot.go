@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/g4s8/openbots-go/internal/bot/adaptors"
 	"github.com/g4s8/openbots-go/internal/bot/handlers"
 	"github.com/g4s8/openbots-go/pkg/spec"
 	"github.com/g4s8/openbots-go/pkg/types"
@@ -70,10 +71,7 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 			}
 		}
 		if h.Replies != nil {
-			handler, err = handlers.NewReplyFromSpec(h.Replies)
-			if err != nil {
-				return nil, errors.Wrap(err, "create handler")
-			}
+			handler = adaptors.Replies(h.Replies)
 		}
 		if h.State != nil {
 			stateHandler = handlers.NewStateHandlerFromSpec(h.State)
