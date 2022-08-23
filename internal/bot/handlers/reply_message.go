@@ -3,21 +3,20 @@ package handlers
 import (
 	"context"
 
-	"github.com/g4s8/openbots-go/pkg/spec"
 	"github.com/g4s8/openbots-go/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type (
-	messageModifier func(*telegram.MessageConfig)
-	inlineButton    struct {
+	MessageModifier func(*telegram.MessageConfig)
+	InlineButton    struct {
 		Text     string
 		URL      string
 		Callback string
 	}
 )
 
-func messageWithKeyboard(keyboard [][]string) messageModifier {
+func MessageWithKeyboard(keyboard [][]string) MessageModifier {
 	return func(msg *telegram.MessageConfig) {
 		if len(keyboard) == 0 {
 			return
@@ -34,7 +33,7 @@ func messageWithKeyboard(keyboard [][]string) messageModifier {
 	}
 }
 
-func messageWithInlinceKeyboard(keyboard [][]inlineButton) messageModifier {
+func MessageWithInlinceKeyboard(keyboard [][]InlineButton) MessageModifier {
 	return func(msg *telegram.MessageConfig) {
 		if len(keyboard) == 0 {
 			return
@@ -56,7 +55,7 @@ func messageWithInlinceKeyboard(keyboard [][]inlineButton) messageModifier {
 	}
 }
 
-func newMessageReplier(text string, modifiers ...messageModifier) Replier {
+func NewMessageReplier(text string, modifiers ...MessageModifier) MessageReplier {
 	return func(ctx context.Context, chatID int64, bot *telegram.BotAPI) error {
 		state := types.StateFromContext(ctx)
 		intp := newInterpolator(state)
@@ -69,17 +68,4 @@ func newMessageReplier(text string, modifiers ...messageModifier) Replier {
 		_, err := bot.Send(msg)
 		return err
 	}
-}
-
-func inlineButtonsFromSpec(bts [][]spec.InlineButton) (res [][]inlineButton) {
-	res = make([][]inlineButton, len(bts))
-	for i, row := range bts {
-		res[i] = make([]inlineButton, len(row))
-		for j, btn := range row {
-			res[i][j].Text = btn.Text
-			res[i][j].URL = btn.URL
-			res[i][j].Callback = btn.Callback
-		}
-	}
-	return
 }
