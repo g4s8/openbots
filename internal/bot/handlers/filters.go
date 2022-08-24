@@ -12,6 +12,7 @@ import (
 var (
 	_ types.EventFilter = (*MessageFilter)(nil)
 	_ types.EventFilter = (*CallbackFilter)(nil)
+	_ types.EventFilter = (*ContextFilter)(nil)
 )
 
 // MessageFilter checks update by message criteria.
@@ -69,4 +70,22 @@ func NewCallbackFilterFromSpec(s *spec.CallbackTrigger) (types.EventFilter, erro
 	return &CallbackFilter{
 		callback: s.Data,
 	}, nil
+}
+
+type ContextFilter struct {
+	base    types.EventFilter
+	context *types.Context
+	val     string
+}
+
+func NewContextFilter(base types.EventFilter, context *types.Context, val string) types.EventFilter {
+	return &ContextFilter{
+		base:    base,
+		context: context,
+		val:     val,
+	}
+}
+
+func (h *ContextFilter) Check(ctx context.Context, update *telegram.Update) bool {
+	return h.context.Check(h.val) && h.base.Check(ctx, update)
 }

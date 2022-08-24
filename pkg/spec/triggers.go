@@ -8,6 +8,7 @@ import (
 type Trigger struct {
 	Message  *MessageTrigger  `yaml:"message"`
 	Callback *CallbackTrigger `yaml:"callback"`
+	Context  string           `yaml:"context"`
 }
 
 func (t *Trigger) validate() (errs []error) {

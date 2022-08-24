@@ -30,15 +30,17 @@ type Bot struct {
 	handlers      []*eventHandler
 	stateHandlers []*stateHandler
 
-	state  types.State
-	botAPI *telegram.BotAPI
-	doneCh chan struct{}
+	context *types.Context
+	state   types.State
+	botAPI  *telegram.BotAPI
+	doneCh  chan struct{}
 }
 
 func New(botAPI *telegram.BotAPI) *Bot {
 	return &Bot{
 		handlers:      make([]*eventHandler, 0),
 		stateHandlers: make([]*stateHandler, 0),
+		context:       new(types.Context),
 		state:         make(types.State),
 		botAPI:        botAPI,
 		doneCh:        make(chan struct{}),
@@ -70,6 +72,9 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 				return nil, errors.Wrap(err, "create callback event filter")
 			}
 		}
+		if h.Trigger.Context != "" && filter != nil {
+			filter = handlers.NewContextFilter(filter, bot.context, h.Trigger.Context)
+		}
 		if h.Replies != nil {
 			handler = adaptors.Replies(h.Replies)
 		}
@@ -79,6 +84,15 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 				return nil, errors.Wrap(err, "create state handler")
 			}
 		}
+		if handler != nil && h.Context != nil {
+			if h.Context.Set != "" {
+				handler = handlers.NewContextSetter(handler, bot.context, h.Context.Set)
+			}
+			if h.Context.Delete != "" {
+				handler = handlers.NewContextDeleter(handler, bot.context, h.Context.Delete)
+			}
+		}
+
 		if filter == nil {
 			return nil, errors.New("no event filter")
 		}

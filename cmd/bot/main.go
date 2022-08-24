@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -34,8 +35,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to parse config: %v", err)
 	}
-	if err := spec.Validate(); err != nil {
-		log.Fatalf("Config validation failed: %v", err)
+	if errs := spec.Validate(); len(errs) > 0 {
+		fmt.Printf("There are %d validation errors:\n", len(errs))
+		for i, err := range errs {
+			fmt.Printf("  [%d] ERROR: %v\n", i, err)
+		}
+		os.Exit(1)
 	}
 
 	bot, err := bot.NewFromSpec(spec.Bot)

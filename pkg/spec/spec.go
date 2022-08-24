@@ -25,6 +25,7 @@ type Handler struct {
 	Trigger *Trigger `yaml:"on"`
 	Replies []*Reply `yaml:"reply"`
 	State   *State   `yaml:"state"`
+	Context *Context `yaml:"context"`
 }
 
 var ErrNoTriggerConfig = errors.New("no trigger configuration")
@@ -38,6 +39,9 @@ func (h *Handler) validate() (errs []error) {
 	}
 	for _, reply := range h.Replies {
 		errs = append(errs, reply.validate()...)
+	}
+	if h.Context != nil {
+		errs = append(errs, h.Context.validate()...)
 	}
 	return
 }
