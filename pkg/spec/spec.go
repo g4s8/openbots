@@ -60,9 +60,6 @@ func (s *Spec) validate() (errs []error) {
 		errs = append(errs, ErrInvalidSpec)
 		return
 	}
-	if s.Bot.Token == "" {
-		errs = append(errs, ErrNoTokenProvided)
-	}
 	if len(s.Bot.Handlers) == 0 {
 		errs = append(errs, ErrNoHandlersConfig)
 	}
