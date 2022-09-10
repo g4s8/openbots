@@ -20,6 +20,9 @@ func MessageRepply(s *spec.MessageReply) *handlers.MessageReply {
 		modifiers = append(modifiers, handlers.MessageWithInlinceKeyboard(
 			inlineButtonsFromSpec(s.Markup.InlineKeyboard)))
 	}
+	if s.ParseMode != "" {
+		modifiers = append(modifiers, handlers.MessageWithParseMode(string(s.ParseMode)))
+	}
 	replier := handlers.NewMessageReplier(s.Text, modifiers...)
 	return handlers.NewMessageReply(replier)
 }

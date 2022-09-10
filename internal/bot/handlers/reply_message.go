@@ -55,6 +55,12 @@ func MessageWithInlinceKeyboard(keyboard [][]InlineButton) MessageModifier {
 	}
 }
 
+func MessageWithParseMode(mode string) MessageModifier {
+	return func(msg *telegram.MessageConfig) {
+		msg.ParseMode = mode
+	}
+}
+
 func NewMessageReplier(text string, modifiers ...MessageModifier) MessageReplier {
 	return func(ctx context.Context, chatID int64, bot *telegram.BotAPI) error {
 		state := types.StateFromContext(ctx)

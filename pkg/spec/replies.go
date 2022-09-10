@@ -24,19 +24,41 @@ func (r *Reply) validate() (errs []error) {
 	return
 }
 
+// ParseMode of message reply
+type ParseMode string
+
+func (pm ParseMode) validate() []error {
+	switch pm {
+	case ModeMarkdown, ModeMarkdownV2, ModeHTML:
+		return nil
+	}
+	return []error{fmt.Errorf("invalid parse mode %s", pm)}
+}
+
+const (
+	ModeMarkdown   = ParseMode("Markdown")
+	ModeMarkdownV2 = ParseMode("MarkdownV2")
+	ModeHTML       = ParseMode("HTML")
+)
+
 type MessageReply struct {
-	Text   string       `yaml:"text"`
-	Markup *ReplyMarkup `yaml:"markup"`
+	Text      string       `yaml:"text"`
+	ParseMode ParseMode    `yaml:"parseMode"`
+	Markup    *ReplyMarkup `yaml:"markup"`
 }
 
 func (r *MessageReply) validate() []error {
+	var errs []error
 	if r.Text == "" {
-		return []error{errors.New("empty message reply")}
+		errs = append(errs, errors.New("empty message reply"))
 	}
 	if r.Markup != nil {
-		return r.Markup.validate()
+		errs = append(errs, r.Markup.validate()...)
 	}
-	return []error{}
+	if r.ParseMode != "" {
+		errs = append(errs, ParseMode(r.ParseMode).validate()...)
+	}
+	return errs
 }
 
 type InlineButton struct {
