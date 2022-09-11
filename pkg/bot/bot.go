@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/g4s8/openbots-go/internal/bot/adaptors"
@@ -30,10 +31,12 @@ type Bot struct {
 	handlers      []*eventHandler
 	stateHandlers []*stateHandler
 
-	context *types.Context
-	state   types.State
-	botAPI  *telegram.BotAPI
-	doneCh  chan struct{}
+	context  *types.Context
+	state    types.State
+	botAPI   *telegram.BotAPI
+	stopOnce sync.Once
+	quitCh   chan struct{}
+	doneCh   chan struct{}
 }
 
 func New(botAPI *telegram.BotAPI) *Bot {
@@ -43,7 +46,8 @@ func New(botAPI *telegram.BotAPI) *Bot {
 		context:       new(types.Context),
 		state:         make(types.State),
 		botAPI:        botAPI,
-		doneCh:        make(chan struct{}),
+		quitCh:        make(chan struct{}, 1),
+		doneCh:        make(chan struct{}, 1),
 	}
 }
 
@@ -122,9 +126,10 @@ func (b *Bot) Start() error {
 	updCfg.Timeout = 30
 	updCh := b.botAPI.GetUpdatesChan(updCfg)
 	go func() {
+		defer close(b.doneCh)
 		for {
 			select {
-			case <-b.doneCh:
+			case <-b.quitCh:
 				return
 			case upd := <-updCh:
 				b.handleUpdate(&upd)
@@ -136,9 +141,13 @@ func (b *Bot) Start() error {
 }
 
 func (b *Bot) Stop() error {
-	b.botAPI.StopReceivingUpdates()
-	close(b.doneCh)
-	log.Print("Bot stopped")
+	b.stopOnce.Do(func() {
+		log.Println("Stopping bot")
+		b.botAPI.StopReceivingUpdates()
+		close(b.quitCh)
+		<-b.doneCh
+		log.Print("Bot stopped")
+	})
 	return nil
 }
 

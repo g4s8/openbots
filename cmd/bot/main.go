@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/g4s8/openbots-go/pkg/bot"
 	"github.com/g4s8/openbots-go/pkg/spec"
@@ -51,10 +53,19 @@ func main() {
 		log.Fatal("Failed to start bot: ", err)
 	}
 
-	done := make(chan struct{})
-	<-done
-
-	if err := bot.Stop(); err != nil {
-		log.Fatal("Failed to stop bot: ", err)
-	}
+	doneCh := make(chan struct{})
+	exitCh := make(chan os.Signal, 1)
+	go func() {
+		defer close(doneCh)
+		<-exitCh
+		log.Println("Shutting down")
+		if err := bot.Stop(); err != nil {
+			log.Fatal("Failed to stop bot: ", err)
+		}
+		log.Println("Shutdown completed")
+	}()
+	signal.Notify(exitCh, os.Interrupt, syscall.SIGTERM)
+	<-doneCh
+	log.Println("Exit")
+	os.Exit(0)
 }
