@@ -76,3 +76,7 @@ func Replies(r []*spec.Reply) types.Handler {
 	}
 	return &multiHandler{handlers}
 }
+
+func Webhook(s *spec.Webhook) types.Handler {
+	return handlers.NewWebhook(s.URL, s.Method, s.Body)
+}

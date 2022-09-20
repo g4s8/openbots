@@ -64,7 +64,7 @@ Full feature list:
  - [ ] handle image messages
  - [ ] delete messages
  - [ ] send message to particular user
- - [ ] call webhook on update
+ - [x] call webhook on update
  - [ ] ... more features
  
 ## Extending

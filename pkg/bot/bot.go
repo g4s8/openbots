@@ -61,7 +61,7 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 	bot.state = types.State(s.State)
 	for _, h := range s.Handlers {
 		var filter types.EventFilter
-		var handler types.Handler
+		var hs []types.Handler
 		var stateHandler types.StateHandler
 
 		if h.Trigger.Message != nil {
@@ -80,7 +80,7 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 			filter = handlers.NewContextFilter(filter, bot.context, h.Trigger.Context)
 		}
 		if h.Replies != nil {
-			handler = adaptors.Replies(h.Replies)
+			hs = append(hs, adaptors.Replies(h.Replies))
 		}
 		if h.State != nil {
 			stateHandler = handlers.NewStateHandlerFromSpec(h.State)
@@ -88,23 +88,28 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 				return nil, errors.Wrap(err, "create state handler")
 			}
 		}
-		if handler != nil && h.Context != nil {
-			if h.Context.Set != "" {
-				handler = handlers.NewContextSetter(handler, bot.context, h.Context.Set)
+		if len(hs) > 0 && h.Context != nil {
+			for i, han := range hs {
+				if h.Context.Set != "" {
+					hs[i] = handlers.NewContextSetter(han, bot.context, h.Context.Set)
+				}
+				if h.Context.Delete != "" {
+					hs[i] = handlers.NewContextDeleter(han, bot.context, h.Context.Delete)
+				}
 			}
-			if h.Context.Delete != "" {
-				handler = handlers.NewContextDeleter(handler, bot.context, h.Context.Delete)
-			}
+		}
+		if h.Webhook != nil {
+			hs = append(hs, adaptors.Webhook(h.Webhook))
 		}
 
 		if filter == nil {
 			return nil, errors.New("no event filter")
 		}
-		if handler == nil && stateHandler == nil {
+		if len(hs) == 0 && stateHandler == nil {
 			return nil, errors.New("no handler")
 		}
-		if handler != nil {
-			bot.Handle(filter, handler)
+		for _, h := range hs {
+			bot.Handle(filter, h)
 		}
 		if stateHandler != nil {
 			bot.HandleState(filter, stateHandler)

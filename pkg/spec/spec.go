@@ -24,6 +24,7 @@ type Bot struct {
 type Handler struct {
 	Trigger *Trigger `yaml:"on"`
 	Replies []*Reply `yaml:"reply"`
+	Webhook *Webhook `yaml:"webhook"`
 	State   *State   `yaml:"state"`
 	Context *Context `yaml:"context"`
 }
