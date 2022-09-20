@@ -25,7 +25,7 @@ func NewMessageReply(replier MessageReplier) *MessageReply {
 
 func (h *MessageReply) Handle(ctx context.Context, update *telegram.Update,
 	bot *telegram.BotAPI) error {
-	if err := h.replier(ctx, chatID(update), bot); err != nil {
+	if err := h.replier(ctx, ChatID(update), bot); err != nil {
 		return errors.Wrap(err, "reply message")
 	}
 	return nil

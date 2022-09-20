@@ -14,7 +14,7 @@ type Handler interface {
 
 // StateHandler for state updates.
 type StateHandler interface {
-	Handle(context.Context, *telegram.Update, State) (State, error)
+	Handle(context.Context, *telegram.Update, UserState) (UserState, error)
 }
 
 // EventFilter checks that telegram update could be handlerd.

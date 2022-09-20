@@ -9,16 +9,16 @@ import (
 )
 
 type StateHandler struct {
-	ops []types.StateOp
+	ops []types.UserStateOp
 }
 
 func (h *StateHandler) Handle(ctx context.Context, update *telegram.Update,
-	state types.State) (types.State, error) {
+	state types.UserState) (types.UserState, error) {
 	return state.Apply(h.ops...), nil
 }
 
 func NewStateHandlerFromSpec(spec *spec.State) *StateHandler {
-	ops := make([]types.StateOp, 0, len(spec.Set)+len(spec.Delete))
+	ops := make([]types.UserStateOp, 0, len(spec.Set)+len(spec.Delete))
 	for setK, setV := range spec.Set {
 		ops = append(ops, types.SetState(setK, setV))
 	}

@@ -63,7 +63,7 @@ func MessageWithParseMode(mode string) MessageModifier {
 
 func NewMessageReplier(text string, modifiers ...MessageModifier) MessageReplier {
 	return func(ctx context.Context, chatID int64, bot *telegram.BotAPI) error {
-		state := types.StateFromContext(ctx)
+		state := types.StateFromContext(ctx, chatID)
 		intp := newInterpolator(state)
 		processed := intp.interpolate(text)
 

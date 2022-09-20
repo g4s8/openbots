@@ -13,7 +13,7 @@ func setStr(dst **string, src string) {
 	**dst = src
 }
 
-func chatID(upd *telegram.Update) int64 {
+func ChatID(upd *telegram.Update) int64 {
 	if upd.Message != nil {
 		return upd.Message.Chat.ID
 	}
@@ -24,10 +24,10 @@ func chatID(upd *telegram.Update) int64 {
 }
 
 type interpolator struct {
-	state types.State
+	state types.UserState
 }
 
-func newInterpolator(state types.State) *interpolator {
+func newInterpolator(state types.UserState) *interpolator {
 	return &interpolator{state: state}
 }
 

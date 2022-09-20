@@ -44,7 +44,7 @@ func New(botAPI *telegram.BotAPI) *Bot {
 		handlers:      make([]*eventHandler, 0),
 		stateHandlers: make([]*stateHandler, 0),
 		context:       new(types.Context),
-		state:         make(types.State),
+		state:         types.NewState(nil),
 		botAPI:        botAPI,
 		quitCh:        make(chan struct{}, 1),
 		doneCh:        make(chan struct{}, 1),
@@ -58,7 +58,7 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 	}
 	botAPI.Debug = true
 	bot := New(botAPI)
-	bot.state = types.State(s.State)
+	bot.state = types.NewState(s.State)
 	for _, h := range s.Handlers {
 		var filter types.EventFilter
 		var hs []types.Handler
@@ -160,7 +160,8 @@ func (b *Bot) handleUpdate(upd *telegram.Update) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	ctx = types.ContextWithState(ctx, b.state)
+	userID := handlers.ChatID(upd)
+	ctx = types.ContextWithState(ctx, userID, b.state)
 	for _, h := range b.handlers {
 		if !h.Check(ctx, upd) {
 			continue
@@ -169,7 +170,7 @@ func (b *Bot) handleUpdate(upd *telegram.Update) {
 			log.Printf("Handler error: %v\n", err)
 		}
 	}
-	state := b.state
+	state := b.state.User(userID)
 	for _, h := range b.stateHandlers {
 		var err error
 		if !h.Check(ctx, upd) {
@@ -180,5 +181,5 @@ func (b *Bot) handleUpdate(upd *telegram.Update) {
 			log.Printf("State handler error: %v\n", err)
 		}
 	}
-	b.state = state
+	b.state.Save(userID, state)
 }
