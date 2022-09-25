@@ -2,3 +2,5 @@
 /bot
 /repo.yml
 /bin/**
+
+dist/
