@@ -6,6 +6,7 @@ before:
     - go generate ./...
 builds:
   - id: openbots
+    binary: openbots
     env:
       - CGO_ENABLED=0
     goos:
@@ -14,6 +15,7 @@ builds:
       - darwin
     main: './cmd/bot'
   - id: 'openbots-validator'
+    binary: 'openbots-validator'
     env:
       - CGO_ENABLED=0
     goos:
