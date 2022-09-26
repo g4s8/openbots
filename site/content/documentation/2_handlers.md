@@ -24,7 +24,7 @@ This handler reacts to user's message with text "Hello" by replying with answer 
 Handler can declare these elements:
  - Trigger `on` (required) - an event matcher used as condition to run handler action.
  - Reply `reply` (optional) - the answers to incoming message.
- - Webhook `webhook` (optional) - call remote URL on message.
+ - Web-hook `webhook` (optional) - call remote URL on message.
  - State `state` (optional) - change current state for the user.
  - Context `context` (optional) - change current context.
 

@@ -14,7 +14,7 @@ and created bot config in the same directory too, then run:
 ```bash
 env BOT_TOKEN="110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw" ./openbots -config bot.yml
 ```
-Use your bot token from previous step instead of placeholder for `BOT_TOKEN` environent
+Use your bot token from previous step instead of placeholder for `BOT_TOKEN` environment
 variable.
 
 That's all - you can find your bot in telegram and click "Start" button,

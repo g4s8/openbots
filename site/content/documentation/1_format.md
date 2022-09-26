@@ -26,7 +26,7 @@ bot:
 ## Token
 
 The `token` element may specify bot token value, it should be YAML string.
-This `token` can be overrided by `BOT_TOKEN` environment variable if present.
+This `token` can be overridden by `BOT_TOKEN` environment variable if present.
 It's recommended to use environment variable instead of `token` field,
 but this field could be used for bot testing and prototyping.
 

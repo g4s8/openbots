@@ -95,11 +95,11 @@ Now we know how to send callback messages from buttons and
 on previous page we discussed how to handle these messages.
 
 Telegram allows us to send popup messages to callback events.
-It can be either popup at the top of chat window or alert with "Ok" button.
+It can be either popup at the top of chat window or alert with "OK" button.
 
-Callback reply is declared with `callback` elelemnt of `reply` object it can be configured
+Callback reply is declared with `callback` element of `reply` object it can be configured
 by two parameters:
- - `text` string (requried) with text to popup
+ - `text` string (required) with text to popup
  - `alert` bool (optional, default `false`) to show alert instead of popup
 
 ```yaml
