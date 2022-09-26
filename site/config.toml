@@ -1,4 +1,4 @@
-baseURL = 'http://example.org/'
+baseURL = 'https://g4s8.github.io/openbots'
 languageCode = 'en-us'
 title = 'OpenBots documentation'
 
