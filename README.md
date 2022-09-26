@@ -41,7 +41,11 @@ docker run \
 
 ## Quick start
 
-TBD: quick-start wiki and documentation
+See [quick start](https://g4s8.github.io/openbots/quickstart/) guide to create Telegram bot in minutes.
+
+## Documentation
+
+The full documentation is available here: [g4s8.github.io/openbots/documentation](https://g4s8.github.io/openbots/documentation/).
 
 ## About
 
