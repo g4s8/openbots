@@ -1,4 +1,4 @@
-module github.com/g4s8/openbots-go
+module github.com/g4s8/openbots
 
 go 1.19
 

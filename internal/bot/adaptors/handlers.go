@@ -3,9 +3,9 @@ package adaptors
 import (
 	"context"
 
-	"github.com/g4s8/openbots-go/internal/bot/handlers"
-	"github.com/g4s8/openbots-go/pkg/spec"
-	"github.com/g4s8/openbots-go/pkg/types"
+	"github.com/g4s8/openbots/internal/bot/handlers"
+	"github.com/g4s8/openbots/pkg/spec"
+	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"

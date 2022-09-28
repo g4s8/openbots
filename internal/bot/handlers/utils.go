@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/g4s8/openbots-go/pkg/types"
+	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 

@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/g4s8/openbots-go/pkg/spec"
+	"github.com/g4s8/openbots/pkg/spec"
 )
 
 func main() {

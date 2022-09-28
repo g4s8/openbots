@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/g4s8/openbots-go/internal/bot/adaptors"
-	"github.com/g4s8/openbots-go/internal/bot/handlers"
-	"github.com/g4s8/openbots-go/pkg/spec"
-	"github.com/g4s8/openbots-go/pkg/types"
+	"github.com/g4s8/openbots/internal/bot/adaptors"
+	"github.com/g4s8/openbots/internal/bot/handlers"
+	"github.com/g4s8/openbots/pkg/spec"
+	"github.com/g4s8/openbots/pkg/types"
 	"github.com/pkg/errors"
 
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"

@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/g4s8/openbots-go/pkg/bot"
-	"github.com/g4s8/openbots-go/pkg/spec"
+	"github.com/g4s8/openbots/pkg/bot"
+	"github.com/g4s8/openbots/pkg/spec"
 	"github.com/pkg/errors"
 )
 
