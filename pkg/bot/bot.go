@@ -137,7 +137,9 @@ func (b *Bot) Start() error {
 			case <-b.quitCh:
 				return
 			case upd := <-updCh:
-				b.HandleUpdate(&upd)
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				b.HandleUpdate(ctx, &upd)
+				cancel()
 			}
 		}
 	}()
@@ -156,10 +158,7 @@ func (b *Bot) Stop() error {
 	return nil
 }
 
-func (b *Bot) HandleUpdate(upd *telegram.Update) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
+func (b *Bot) HandleUpdate(ctx context.Context, upd *telegram.Update) {
 	userID := handlers.ChatID(upd)
 	ctx = types.ContextWithState(ctx, userID, b.state)
 	for _, h := range b.handlers {
