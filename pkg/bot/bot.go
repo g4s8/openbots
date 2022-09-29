@@ -137,7 +137,7 @@ func (b *Bot) Start() error {
 			case <-b.quitCh:
 				return
 			case upd := <-updCh:
-				b.handleUpdate(&upd)
+				b.HandleUpdate(&upd)
 			}
 		}
 	}()
@@ -156,7 +156,7 @@ func (b *Bot) Stop() error {
 	return nil
 }
 
-func (b *Bot) handleUpdate(upd *telegram.Update) {
+func (b *Bot) HandleUpdate(upd *telegram.Update) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
