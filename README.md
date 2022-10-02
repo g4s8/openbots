@@ -1,13 +1,12 @@
-Telegram Bot framework with declarative specification.
+Telegram Bot framework with declarative YAML specification.
 
 [![CI](https://github.com/g4s8/openbots/actions/workflows/go.yml/badge.svg)](https://github.com/g4s8/openbots/actions/workflows/go.yml)
 [![Docker Pulls](https://img.shields.io/docker/pulls/g4s8/openbots)](https://hub.docker.com/r/g4s8/openbots)
 
 ## Example
 
-Write declarative bot specification:
+Write bot specification in `bot.yml` file:
 ```yaml
-# bot.yml
 bot:
   handlers:
     - on:
@@ -31,6 +30,10 @@ bot:
         - message:
             text: "I'm fine, thank you"
 ```
+Create new Telegram bot and get its token: https://core.telegram.org/bots#6-botfather
+
+Provide this token to docker image as `BOT_TOKEN` environment.
+
 Run your bot:
 ```sh
 docker run \
