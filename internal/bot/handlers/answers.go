@@ -11,7 +11,7 @@ import (
 var _ types.Handler = (*MessageReply)(nil)
 
 // MessageReplier func reply to message in chat.
-type MessageReplier func(ctx context.Context, chatID int64, bot *telegram.BotAPI) error
+type MessageReplier func(ctx context.Context, chatID types.ChatID, bot *telegram.BotAPI) error
 
 // MessageReply handler processes telegram updates and reply message to them.
 type MessageReply struct {
@@ -50,7 +50,9 @@ func (h *CallbackReply) Handle(ctx context.Context, update *telegram.Update,
 	resp.ShowAlert = h.alert
 	_, err := bot.Send(resp)
 	if err != nil {
-		return errors.Wrap(err, "send callback response")
+		// FIXME: bot library fails to decode Telegram API response
+		// return errors.Wrap(err, "send callback response")
+		return nil
 	}
 	return nil
 }

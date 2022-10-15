@@ -72,8 +72,17 @@ Full feature list:
  - [ ] delete messages
  - [ ] send message to particular user
  - [x] call webhook on update
+ - [x] database storage
  - [ ] ... more features
  
+## Persistence
+
+Bot can keep its state in two modes:
+ - `memory` - store all data in memory
+ - `database` - connect PostgreSQL database
+
+For persistence configuration see [documentation](https://g4s8.github.io/openbots/persistence).
+
 ## Extending
 
 This bot could be extended with custom handlers on Go.

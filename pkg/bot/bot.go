@@ -2,13 +2,17 @@ package bot
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/g4s8/openbots/internal/bot/adaptors"
 	"github.com/g4s8/openbots/internal/bot/handlers"
+	ctx "github.com/g4s8/openbots/pkg/context"
 	"github.com/g4s8/openbots/pkg/spec"
+	"github.com/g4s8/openbots/pkg/state"
 	"github.com/g4s8/openbots/pkg/types"
 	"github.com/pkg/errors"
 
@@ -31,20 +35,20 @@ type Bot struct {
 	handlers      []*eventHandler
 	stateHandlers []*stateHandler
 
-	context  *types.Context
-	state    types.State
+	context  types.ContextProvider
+	state    types.StateProvider
 	botAPI   *telegram.BotAPI
 	stopOnce sync.Once
 	quitCh   chan struct{}
 	doneCh   chan struct{}
 }
 
-func New(botAPI *telegram.BotAPI) *Bot {
+func New(botAPI *telegram.BotAPI, state types.StateProvider, context types.ContextProvider) *Bot {
 	return &Bot{
 		handlers:      make([]*eventHandler, 0),
 		stateHandlers: make([]*stateHandler, 0),
-		context:       new(types.Context),
-		state:         types.NewState(nil),
+		context:       context,
+		state:         state,
 		botAPI:        botAPI,
 		quitCh:        make(chan struct{}, 1),
 		doneCh:        make(chan struct{}, 1),
@@ -56,9 +60,41 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "create bot API")
 	}
-	botAPI.Debug = true
-	bot := New(botAPI)
-	bot.state = types.NewState(s.State)
+	botAPI.Debug = s.Debug
+
+	botID := botAPI.Self.ID
+
+	var (
+		sp types.StateProvider
+		cp types.ContextProvider
+	)
+	switch s.Config.Persistence.Type {
+	case spec.MemoryPersistence:
+		sp = state.NewMemory(s.State)
+		cp = ctx.NewMemoryProvider()
+	case spec.DatabasePersistence:
+		conString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s",
+			s.Config.Persistence.DBConfig.Host, s.Config.Persistence.DBConfig.Port,
+			s.Config.Persistence.DBConfig.User, s.Config.Persistence.DBConfig.Password,
+			s.Config.Persistence.DBConfig.Database)
+		if s.Config.Persistence.DBConfig.NoSSL {
+			conString += " sslmode=disable"
+		}
+		log.Println("Connecting database")
+		db, err := sql.Open("postgres", conString)
+		if err != nil {
+			return nil, errors.Wrap(err, "open database")
+		}
+		if err := db.Ping(); err != nil {
+			return nil, errors.Wrap(err, "ping database")
+		}
+		log.Println("Database connected")
+		sp = state.NewDB(db, botID)
+		cp = ctx.NewDBProvider(db, botID)
+	}
+
+	bot := New(botAPI, sp, cp)
+
 	for _, h := range s.Handlers {
 		var filter types.EventFilter
 		var hs []types.Handler
@@ -80,10 +116,10 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 			filter = handlers.NewContextFilter(filter, bot.context, h.Trigger.Context)
 		}
 		if h.Replies != nil {
-			hs = append(hs, adaptors.Replies(h.Replies))
+			hs = append(hs, adaptors.Replies(bot.state, h.Replies))
 		}
 		if h.State != nil {
-			stateHandler = handlers.NewStateHandlerFromSpec(h.State)
+			stateHandler = handlers.NewStateHandlerFromSpec(bot.state, h.State)
 			if err != nil {
 				return nil, errors.Wrap(err, "create state handler")
 			}
@@ -159,26 +195,30 @@ func (b *Bot) Stop() error {
 }
 
 func (b *Bot) HandleUpdate(ctx context.Context, upd *telegram.Update) {
-	userID := handlers.ChatID(upd)
-	ctx = types.ContextWithState(ctx, userID, b.state)
 	for _, h := range b.handlers {
-		if !h.Check(ctx, upd) {
+		if check, err := h.Check(ctx, upd); err != nil {
+			log.Printf("Filter error: %v", err)
+			continue
+		} else if !check {
 			continue
 		}
+
 		if err := h.Handle(ctx, upd, b.botAPI); err != nil {
-			log.Printf("Handler error: %v\n", err)
-		}
-	}
-	state := b.state.User(userID)
-	for _, h := range b.stateHandlers {
-		var err error
-		if !h.Check(ctx, upd) {
+			log.Printf("Handler error: %v", err)
 			continue
 		}
-		state, err = h.Handle(ctx, upd, state)
-		if err != nil {
-			log.Printf("State handler error: %v\n", err)
+	}
+	for _, sh := range b.stateHandlers {
+		if check, err := sh.Check(ctx, upd); err != nil {
+			log.Printf("State filter error: %v", err)
+			continue
+		} else if !check {
+			continue
+		}
+
+		if err := sh.Handle(ctx, upd); err != nil {
+			log.Printf("State handler error: %v", err)
+			continue
 		}
 	}
-	b.state.Save(userID, state)
 }

@@ -11,7 +11,7 @@ import (
 	"go.uber.org/multierr"
 )
 
-func MessageRepply(s *spec.MessageReply) *handlers.MessageReply {
+func MessageRepply(sp types.StateProvider, s *spec.MessageReply) *handlers.MessageReply {
 	var modifiers []handlers.MessageModifier
 	if s.Markup != nil && len(s.Markup.Keyboard) > 0 {
 		modifiers = append(modifiers, handlers.MessageWithKeyboard(s.Markup.Keyboard))
@@ -23,7 +23,7 @@ func MessageRepply(s *spec.MessageReply) *handlers.MessageReply {
 	if s.ParseMode != "" {
 		modifiers = append(modifiers, handlers.MessageWithParseMode(string(s.ParseMode)))
 	}
-	replier := handlers.NewMessageReplier(s.Text, modifiers...)
+	replier := handlers.NewMessageReplier(sp, s.Text, modifiers...)
 	return handlers.NewMessageReply(replier)
 }
 
@@ -61,12 +61,12 @@ func (h *multiHandler) Handle(ctx context.Context, upd *telegram.Update, bot *te
 	return nil
 }
 
-func Replies(r []*spec.Reply) types.Handler {
+func Replies(sp types.StateProvider, r []*spec.Reply) types.Handler {
 	var handlers []types.Handler
 	for _, reply := range r {
 		var handler types.Handler
 		if reply.Message != nil {
-			handler = MessageRepply(reply.Message)
+			handler = MessageRepply(sp, reply.Message)
 		} else if reply.Callback != nil {
 			handler = CallbackReply(reply.Callback)
 		}

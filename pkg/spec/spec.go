@@ -16,7 +16,9 @@ type Spec struct {
 // Bot spec includes bot configuration and handlers.
 type Bot struct {
 	Token    string            `yaml:"token" env:"BOT_TOKEN"`
+	Config   *Config           `yaml:"config"`
 	State    map[string]string `yaml:"state"`
+	Debug    bool              `yaml:"debug"`
 	Handlers []*Handler        `yaml:"handlers"`
 }
 
@@ -66,6 +68,14 @@ func (s *Spec) validate() (errs []error) {
 	}
 	for _, handler := range s.Bot.Handlers {
 		errs = append(errs, handler.validate()...)
+	}
+	// TODO: move from here or rename method
+	if s.Bot.Config == nil {
+		s.Bot.Config = &Config{
+			Persistence: &PersistenceConfig{
+				Type: MemoryPersistence,
+			},
+		}
 	}
 	return
 }

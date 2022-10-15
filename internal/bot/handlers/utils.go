@@ -13,7 +13,11 @@ func setStr(dst **string, src string) {
 	**dst = src
 }
 
-func ChatID(upd *telegram.Update) int64 {
+func ChatID(upd *telegram.Update) types.ChatID {
+	return types.ChatID(rawChatID(upd))
+}
+
+func rawChatID(upd *telegram.Update) int64 {
 	if upd.Message != nil {
 		return upd.Message.Chat.ID
 	}
@@ -24,17 +28,18 @@ func ChatID(upd *telegram.Update) int64 {
 }
 
 type interpolator struct {
-	state types.UserState
+	state types.State
 }
 
-func newInterpolator(state types.UserState) *interpolator {
+func newInterpolator(state types.State) *interpolator {
 	return &interpolator{state: state}
 }
 
 func (i *interpolator) expander() func(string) string {
 	return func(text string) string {
+		state := i.state.Map()
 		if strings.HasPrefix(text, "state.") {
-			return i.state[text[6:]]
+			return state[text[6:]]
 		}
 		return ""
 	}

@@ -1,19 +1,21 @@
 package types
 
-type Context string
+import (
+	ctx "context"
+)
 
-var EmptyContext = Context("")
-
-func (c *Context) Set(value string) {
-	*c = Context(value)
+type ContextProvider interface {
+	UserContext(ChatID) Context
 }
 
-func (c *Context) Delete(value string) {
-	if *c == Context(value) {
-		*c = ""
-	}
-}
+type Context interface {
 
-func (c Context) Check(value string) bool {
-	return string(c) == value
+	// Set context value.
+	Set(ctx.Context, string) error
+
+	// Reset context.
+	Reset(ctx.Context) error
+
+	// Check context value.
+	Check(ctx.Context, string) (bool, error)
 }

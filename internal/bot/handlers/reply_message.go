@@ -3,8 +3,10 @@ package handlers
 import (
 	"context"
 
+	"github.com/g4s8/openbots/pkg/state"
 	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -61,13 +63,17 @@ func MessageWithParseMode(mode string) MessageModifier {
 	}
 }
 
-func NewMessageReplier(text string, modifiers ...MessageModifier) MessageReplier {
-	return func(ctx context.Context, chatID int64, bot *telegram.BotAPI) error {
-		state := types.StateFromContext(ctx, chatID)
+func NewMessageReplier(sp types.StateProvider, text string, modifiers ...MessageModifier) MessageReplier {
+	return func(ctx context.Context, chatID types.ChatID, bot *telegram.BotAPI) error {
+		state := state.NewUserState()
+		if err := sp.Load(ctx, chatID, state); err != nil {
+			return errors.Wrap(err, "load state")
+		}
+
 		intp := newInterpolator(state)
 		processed := intp.interpolate(text)
 
-		msg := telegram.NewMessage(chatID, processed)
+		msg := telegram.NewMessage(int64(chatID), processed)
 		for _, modifier := range modifiers {
 			modifier(&msg)
 		}

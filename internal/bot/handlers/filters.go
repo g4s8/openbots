@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"context"
-	"errors"
 
 	"github.com/g4s8/openbots/pkg/spec"
 	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -34,8 +34,8 @@ func NewMessageFilterFromSpec(s *spec.MessageTrigger) (types.EventFilter, error)
 	return nil, errors.New("unknown trigger")
 }
 
-func (h *MessageFilter) Check(ctx context.Context, update *telegram.Update) bool {
-	return update.Message != nil && h.check(update.Message)
+func (h *MessageFilter) Check(ctx context.Context, update *telegram.Update) (bool, error) {
+	return update.Message != nil && h.check(update.Message), nil
 }
 
 type messageCriteria func(*telegram.Message) bool
@@ -62,8 +62,8 @@ type CallbackFilter struct {
 	callback string
 }
 
-func (h *CallbackFilter) Check(ctx context.Context, update *telegram.Update) bool {
-	return update.CallbackQuery != nil && update.CallbackQuery.Data == h.callback
+func (h *CallbackFilter) Check(ctx context.Context, update *telegram.Update) (bool, error) {
+	return update.CallbackQuery != nil && update.CallbackQuery.Data == h.callback, nil
 }
 
 func NewCallbackFilterFromSpec(s *spec.CallbackTrigger) (types.EventFilter, error) {
@@ -73,19 +73,28 @@ func NewCallbackFilterFromSpec(s *spec.CallbackTrigger) (types.EventFilter, erro
 }
 
 type ContextFilter struct {
-	base    types.EventFilter
-	context *types.Context
-	val     string
+	base types.EventFilter
+	cp   types.ContextProvider
+	val  string
 }
 
-func NewContextFilter(base types.EventFilter, context *types.Context, val string) types.EventFilter {
+func NewContextFilter(base types.EventFilter, cp types.ContextProvider, val string) types.EventFilter {
 	return &ContextFilter{
-		base:    base,
-		context: context,
-		val:     val,
+		base: base,
+		cp:   cp,
+		val:  val,
 	}
 }
 
-func (h *ContextFilter) Check(ctx context.Context, update *telegram.Update) bool {
-	return h.context.Check(h.val) && h.base.Check(ctx, update)
+func (h *ContextFilter) Check(ctx context.Context, update *telegram.Update) (bool, error) {
+	ctxCheck, err := h.cp.UserContext(ChatID(update)).Check(ctx, h.val)
+	if err != nil {
+		return false, errors.Wrap(err, "check context")
+	}
+	baseCheck, err := h.base.Check(ctx, update)
+	if err != nil {
+		return false, err
+	}
+
+	return baseCheck && ctxCheck, nil
 }

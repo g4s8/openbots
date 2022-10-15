@@ -7,6 +7,9 @@ import (
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+// ChatID is a chat identifier.
+type ChatID int64
+
 // Handler of telegram update message.
 type Handler interface {
 	Handle(context.Context, *telegram.Update, *telegram.BotAPI) error
@@ -14,12 +17,12 @@ type Handler interface {
 
 // StateHandler for state updates.
 type StateHandler interface {
-	Handle(context.Context, *telegram.Update, UserState) (UserState, error)
+	Handle(context.Context, *telegram.Update) error
 }
 
 // EventFilter checks that telegram update could be handlerd.
 type EventFilter interface {
-	Check(context.Context, *telegram.Update) bool
+	Check(context.Context, *telegram.Update) (bool, error)
 }
 
 // Bot instance.
