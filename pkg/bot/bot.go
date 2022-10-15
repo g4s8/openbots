@@ -95,42 +95,53 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 
 	bot := New(botAPI, sp, cp)
 
-	for _, h := range s.Handlers {
-		var filter types.EventFilter
-		var hs []types.Handler
-		var stateHandler types.StateHandler
+	if err := bot.SetupHandlersFromSpec(s.Handlers); err != nil {
+		return nil, errors.Wrap(err, "setup handlers")
+	}
+
+	return bot, nil
+}
+
+func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
+	for _, h := range src {
+		var (
+			filter       types.EventFilter
+			hs           []types.Handler
+			stateHandler types.StateHandler
+			err          error
+		)
 
 		if h.Trigger.Message != nil {
 			filter, err = handlers.NewMessageFilterFromSpec(h.Trigger.Message)
 			if err != nil {
-				return nil, errors.Wrap(err, "create message event filter")
+				return errors.Wrap(err, "create message event filter")
 			}
 		}
 		if h.Trigger.Callback != nil {
 			filter, err = handlers.NewCallbackFilterFromSpec(h.Trigger.Callback)
 			if err != nil {
-				return nil, errors.Wrap(err, "create callback event filter")
+				return errors.Wrap(err, "create callback event filter")
 			}
 		}
 		if h.Trigger.Context != "" && filter != nil {
-			filter = handlers.NewContextFilter(filter, bot.context, h.Trigger.Context)
+			filter = handlers.NewContextFilter(filter, b.context, h.Trigger.Context)
 		}
 		if h.Replies != nil {
-			hs = append(hs, adaptors.Replies(bot.state, h.Replies))
+			hs = append(hs, adaptors.Replies(b.state, h.Replies))
 		}
 		if h.State != nil {
-			stateHandler = handlers.NewStateHandlerFromSpec(bot.state, h.State)
+			stateHandler = handlers.NewStateHandlerFromSpec(b.state, h.State)
 			if err != nil {
-				return nil, errors.Wrap(err, "create state handler")
+				return errors.Wrap(err, "create state handler")
 			}
 		}
 		if len(hs) > 0 && h.Context != nil {
 			for i, han := range hs {
 				if h.Context.Set != "" {
-					hs[i] = handlers.NewContextSetter(han, bot.context, h.Context.Set)
+					hs[i] = handlers.NewContextSetter(han, b.context, h.Context.Set)
 				}
 				if h.Context.Delete != "" {
-					hs[i] = handlers.NewContextDeleter(han, bot.context, h.Context.Delete)
+					hs[i] = handlers.NewContextDeleter(han, b.context, h.Context.Delete)
 				}
 			}
 		}
@@ -139,19 +150,19 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 		}
 
 		if filter == nil {
-			return nil, errors.New("no event filter")
+			return errors.New("no event filter")
 		}
 		if len(hs) == 0 && stateHandler == nil {
-			return nil, errors.New("no handler")
+			return errors.New("no handler")
 		}
 		for _, h := range hs {
-			bot.Handle(filter, h)
+			b.Handle(filter, h)
 		}
 		if stateHandler != nil {
-			bot.HandleState(filter, stateHandler)
+			b.HandleState(filter, stateHandler)
 		}
 	}
-	return bot, nil
+	return nil
 }
 
 func (b *Bot) Handle(filter types.EventFilter, h types.Handler) {
