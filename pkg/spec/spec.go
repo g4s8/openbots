@@ -20,6 +20,7 @@ type Bot struct {
 	State    map[string]string `yaml:"state"`
 	Debug    bool              `yaml:"debug"`
 	Handlers []*Handler        `yaml:"handlers"`
+	Api      *API              `yaml:"api"`
 }
 
 // Handler specification declares bot handlers.

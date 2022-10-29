@@ -10,6 +10,7 @@ import (
 
 	"github.com/g4s8/openbots/internal/bot/adaptors"
 	"github.com/g4s8/openbots/internal/bot/handlers"
+	"github.com/g4s8/openbots/pkg/api"
 	ctx "github.com/g4s8/openbots/pkg/context"
 	"github.com/g4s8/openbots/pkg/spec"
 	"github.com/g4s8/openbots/pkg/state"
@@ -34,19 +35,26 @@ type stateHandler struct {
 type Bot struct {
 	handlers      []*eventHandler
 	stateHandlers []*stateHandler
+	apiHandlers   map[string][]api.Handler
 
-	context  types.ContextProvider
-	state    types.StateProvider
-	botAPI   *telegram.BotAPI
-	stopOnce sync.Once
-	quitCh   chan struct{}
-	doneCh   chan struct{}
+	apiAddr string
+
+	context    types.ContextProvider
+	state      types.StateProvider
+	botAPI     *telegram.BotAPI
+	apiService *api.Service
+	stopOnce   sync.Once
+	quitCh     chan struct{}
+	doneCh     chan struct{}
 }
 
-func New(botAPI *telegram.BotAPI, state types.StateProvider, context types.ContextProvider) *Bot {
+func New(botAPI *telegram.BotAPI, state types.StateProvider, context types.ContextProvider,
+	apiAddr string) *Bot {
 	return &Bot{
 		handlers:      make([]*eventHandler, 0),
 		stateHandlers: make([]*stateHandler, 0),
+		apiHandlers:   make(map[string][]api.Handler),
+		apiAddr:       apiAddr,
 		context:       context,
 		state:         state,
 		botAPI:        botAPI,
@@ -93,10 +101,20 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 		cp = ctx.NewDBProvider(db, botID)
 	}
 
-	bot := New(botAPI, sp, cp)
+	var apiAddr string
+	if s.Config.Api != nil {
+		apiAddr = s.Config.Api.Address
+	}
+	bot := New(botAPI, sp, cp, apiAddr)
 
 	if err := bot.SetupHandlersFromSpec(s.Handlers); err != nil {
 		return nil, errors.Wrap(err, "setup handlers")
+	}
+
+	if s.Api != nil {
+		if err := bot.SetupApiHandlersFromSpec(s.Api.Handlers); err != nil {
+			return nil, errors.Wrap(err, "setup api handlers")
+		}
 	}
 
 	return bot, nil
@@ -165,12 +183,32 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 	return nil
 }
 
+func (b *Bot) SetupApiHandlersFromSpec(src []*spec.ApiHandler) error {
+	for _, h := range src {
+		for _, act := range h.Actions {
+			if act.SendMessage != nil {
+				b.ApiHandler(h.ID,
+					adaptors.ApiSendMessage(b.botAPI, act.SendMessage))
+			}
+		}
+	}
+	return nil
+}
+
 func (b *Bot) Handle(filter types.EventFilter, h types.Handler) {
 	b.handlers = append(b.handlers, &eventHandler{EventFilter: filter, Handler: h})
 }
 
 func (b *Bot) HandleState(filter types.EventFilter, h types.StateHandler) {
 	b.stateHandlers = append(b.stateHandlers, &stateHandler{EventFilter: filter, StateHandler: h})
+}
+
+func (b *Bot) ApiHandler(id string, h api.Handler) {
+	list, ok := b.apiHandlers[id]
+	if !ok {
+		list = make([]api.Handler, 0)
+	}
+	b.apiHandlers[id] = append(list, h)
 }
 
 func (b *Bot) Start() error {
@@ -190,6 +228,21 @@ func (b *Bot) Start() error {
 			}
 		}
 	}()
+	if b.apiAddr != "" {
+		handlers := make(map[string]api.Handler, len(b.apiHandlers))
+		for id, hs := range b.apiHandlers {
+			handlers[id] = &apiHandlerGroup{handlers: hs}
+		}
+		b.apiService = api.NewService(api.Config{
+			Addr:           b.apiAddr,
+			ReadTimeout:    time.Second * 5,
+			RequestTimeout: time.Second * 3,
+		}, handlers)
+		if err := b.apiService.Start(context.TODO()); err != nil {
+			return errors.Wrap(err, "start api service")
+		}
+		log.Printf("API service started on `%s`", b.apiAddr)
+	}
 	log.Print("Bot started")
 	return nil
 }
@@ -199,6 +252,11 @@ func (b *Bot) Stop() error {
 		log.Println("Stopping bot")
 		b.botAPI.StopReceivingUpdates()
 		close(b.quitCh)
+		if b.apiService != nil {
+			if err := b.apiService.Stop(context.TODO()); err != nil {
+				log.Printf("Error stopping API service: %v", err)
+			}
+		}
 		<-b.doneCh
 		log.Print("Bot stopped")
 	})

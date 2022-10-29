@@ -1,7 +1,12 @@
 package spec
 
 type Config struct {
+	Api         *ApiConfig
 	Persistence *PersistenceConfig `yaml:"persistence"`
+}
+
+type ApiConfig struct {
+	Address string `yaml:"address"`
 }
 
 type PersistenceType string
