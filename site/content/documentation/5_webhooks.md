@@ -6,13 +6,16 @@ weight: 5
 
 Webhook can be sent as HTTP request to configured URL when handler is called.
 For example if you want to count some specific message for statistics
-or run some code on your side when user clicks the button.
+or run some code on your side when user clicks the button. Webhook payloads
+are created as JSON object based on cnofiguration.
+
+Webhooks may include state or message fields.
 
 Webhook object has mandatory `url` field and optional `method` and `body`
 fields:
  - `url` (required) - the URL to call.
  - `method` (optional, default `GET`) - HTTP method.
- - `body` (optional) - request body.
+ - `body` (optional) - request body as YAML mapping
 
 ```yaml
 on:
@@ -23,5 +26,18 @@ reply:
   - webhook:
       url: "https://you-site/terms"
       method: POST
-      body: '{"accepted": true}'
+      body:
+        test: "Hello"
+        message: "${message.text}"
+        state: "${state.foo}"
+```
+This webhook send JSON with static `test` field, and dynamic
+`message` and `state` fields: `message` field contains message text value,
+and `state` field loads `foo` key from state:
+```json
+{
+  "test": "Hello",
+  "message": "User input",
+  "state": "one"
+}
 ```

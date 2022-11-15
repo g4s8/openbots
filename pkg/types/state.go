@@ -16,5 +16,5 @@ type StateProvider interface {
 }
 
 type StateOp interface {
-	Apply(State)
+	Apply(State, ...func(string) string)
 }

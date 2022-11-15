@@ -11,7 +11,7 @@ import (
 var _ types.Handler = (*MessageReply)(nil)
 
 // MessageReplier func reply to message in chat.
-type MessageReplier func(ctx context.Context, chatID types.ChatID, bot *telegram.BotAPI) error
+type MessageReplier func(ctx context.Context, upd *telegram.Update, bot *telegram.BotAPI) error
 
 // MessageReply handler processes telegram updates and reply message to them.
 type MessageReply struct {
@@ -25,7 +25,7 @@ func NewMessageReply(replier MessageReplier) *MessageReply {
 
 func (h *MessageReply) Handle(ctx context.Context, update *telegram.Update,
 	bot *telegram.BotAPI) error {
-	if err := h.replier(ctx, ChatID(update), bot); err != nil {
+	if err := h.replier(ctx, update, bot); err != nil {
 		return errors.Wrap(err, "reply message")
 	}
 	return nil

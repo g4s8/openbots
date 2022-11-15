@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/g4s8/openbots/pkg/types"
 	_ "github.com/lib/pq"
@@ -81,6 +82,7 @@ func (db *DB) Update(ctx context.Context, uid types.ChatID, state types.State) e
 		}
 		defer stmt.Close()
 		for _, key := range changes.deleted {
+			fmt.Printf("DB(bot=%d chat=%d): delete %s\n", db.botID, uid, key)
 			if _, err = stmt.ExecContext(ctx, db.botID, uid, key); err != nil {
 				return errors.Wrap(err, "exec delete")
 			}
@@ -96,6 +98,7 @@ func (db *DB) Update(ctx context.Context, uid types.ChatID, state types.State) e
 		defer stmt.Close()
 		for _, key := range changes.added {
 			val, _ := state.Get(key)
+			fmt.Printf("DB(bot=%d chat=%d): add %s=%s\n", db.botID, uid, key, val)
 			if _, err = stmt.ExecContext(ctx, db.botID, int64(uid), key, val); err != nil {
 				return errors.Wrap(err, "exec insert")
 			}

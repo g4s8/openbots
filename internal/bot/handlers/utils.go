@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/g4s8/openbots/pkg/types"
@@ -29,17 +30,32 @@ func rawChatID(upd *telegram.Update) int64 {
 
 type interpolator struct {
 	state types.State
+
+	message *telegram.Message
 }
 
-func newInterpolator(state types.State) *interpolator {
-	return &interpolator{state: state}
+func newInterpolator(state types.State, upd *telegram.Update) *interpolator {
+	res := &interpolator{state: state}
+	if upd.Message != nil {
+		res.message = upd.Message
+	}
+	return res
 }
 
 func (i *interpolator) expander() func(string) string {
+	message := make(map[string]string)
+	if i.message != nil {
+		message["id"] = strconv.Itoa(i.message.MessageID)
+		message["text"] = i.message.Text
+		message["from.id"] = strconv.FormatInt(i.message.From.ID, 10)
+	}
 	return func(text string) string {
 		state := i.state.Map()
 		if strings.HasPrefix(text, "state.") {
 			return state[text[6:]]
+		}
+		if strings.HasPrefix(text, "message.") {
+			return message[text[8:]]
 		}
 		return ""
 	}

@@ -39,3 +39,10 @@ To clear the state, use `delete`:
 state:
   delete: name
 ```
+
+User's state can also be set to dynamic message values, e.g. message text:
+```yaml
+state:
+  set:
+    name: "${message.text}"
+```

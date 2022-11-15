@@ -7,6 +7,7 @@ import (
 	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 type (
@@ -63,14 +64,16 @@ func MessageWithParseMode(mode string) MessageModifier {
 	}
 }
 
-func NewMessageReplier(sp types.StateProvider, text string, modifiers ...MessageModifier) MessageReplier {
-	return func(ctx context.Context, chatID types.ChatID, bot *telegram.BotAPI) error {
+func NewMessageReplier(sp types.StateProvider, text string, logger zerolog.Logger, modifiers ...MessageModifier) MessageReplier {
+	return func(ctx context.Context, upd *telegram.Update, bot *telegram.BotAPI) error {
+		logger = logger.With().Str("handler", "reply_message").Logger()
 		state := state.NewUserState()
+		chatID := ChatID(upd)
 		if err := sp.Load(ctx, chatID, state); err != nil {
 			return errors.Wrap(err, "load state")
 		}
 
-		intp := newInterpolator(state)
+		intp := newInterpolator(state, upd)
 		processed := intp.interpolate(text)
 
 		msg := telegram.NewMessage(int64(chatID), processed)

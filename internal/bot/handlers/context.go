@@ -6,26 +6,24 @@ import (
 	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 type SetContextHandler struct {
-	base  types.Handler
 	cp    types.ContextProvider
 	value string
+	log   zerolog.Logger
 }
 
-func NewContextSetter(base types.Handler, cp types.ContextProvider, value string) *SetContextHandler {
+func NewContextSetter(cp types.ContextProvider, value string, log zerolog.Logger) *SetContextHandler {
 	return &SetContextHandler{
-		base:  base,
 		cp:    cp,
 		value: value,
+		log:   log,
 	}
 }
 
 func (h *SetContextHandler) Handle(ctx context.Context, upd *telegram.Update, api *telegram.BotAPI) error {
-	if err := h.base.Handle(ctx, upd, api); err != nil {
-		return err
-	}
 	if err := h.cp.UserContext(ChatID(upd)).Set(ctx, h.value); err != nil {
 		return errors.Wrap(err, "set context")
 	}
@@ -33,23 +31,20 @@ func (h *SetContextHandler) Handle(ctx context.Context, upd *telegram.Update, ap
 }
 
 type DeleteContextHandler struct {
-	base types.Handler
-	cp   types.ContextProvider
-	val  string
+	cp  types.ContextProvider
+	val string
+	log zerolog.Logger
 }
 
-func NewContextDeleter(base types.Handler, cp types.ContextProvider, val string) *DeleteContextHandler {
+func NewContextDeleter(cp types.ContextProvider, val string, log zerolog.Logger) *DeleteContextHandler {
 	return &DeleteContextHandler{
-		base: base,
-		cp:   cp,
-		val:  val,
+		cp:  cp,
+		val: val,
+		log: log,
 	}
 }
 
 func (h *DeleteContextHandler) Handle(ctx context.Context, upd *telegram.Update, api *telegram.BotAPI) error {
-	if err := h.base.Handle(ctx, upd, api); err != nil {
-		return err
-	}
 	if err := h.cp.UserContext(ChatID(upd)).Reset(ctx); err != nil {
 		return errors.Wrap(err, "delete context")
 	}

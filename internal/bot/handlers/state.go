@@ -8,21 +8,24 @@ import (
 	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 type StateHandler struct {
 	provider types.StateProvider
 	ops      []types.StateOp
+	log      zerolog.Logger
 }
 
-func (h *StateHandler) Handle(ctx context.Context, update *telegram.Update) error {
+func (h *StateHandler) Handle(ctx context.Context, update *telegram.Update, _ *telegram.BotAPI) error {
 	uid := ChatID(update)
 	state := state.NewUserState()
 	if err := h.provider.Load(ctx, uid, state); err != nil {
 		return errors.Wrap(err, "load state")
 	}
+	interpolator := newInterpolator(state, update)
 	for _, op := range h.ops {
-		op.Apply(state)
+		op.Apply(state, interpolator.interpolate)
 	}
 	if err := h.provider.Update(ctx, uid, state); err != nil {
 		return errors.Wrap(err, "update state")
@@ -30,13 +33,40 @@ func (h *StateHandler) Handle(ctx context.Context, update *telegram.Update) erro
 	return nil
 }
 
-func NewStateHandlerFromSpec(provider types.StateProvider, spec *spec.State) *StateHandler {
+type logOp struct {
+	op  types.StateOp
+	log zerolog.Logger
+}
+
+func opWithLog(op types.StateOp, log zerolog.Logger) types.StateOp {
+	return &logOp{op: op, log: log}
+}
+
+func (o *logOp) Apply(target types.State, modifiers ...func(string) string) {
+	o.op.Apply(target, modifiers...)
+	o.log.Debug().Msg("apply")
+}
+
+func NewStateHandlerFromSpec(provider types.StateProvider, spec *spec.State, log zerolog.Logger) *StateHandler {
 	ops := make([]types.StateOp, 0, len(spec.Set)+len(spec.Delete))
 	for setK, setV := range spec.Set {
-		ops = append(ops, state.SetOp(setK, setV))
+		ops = append(ops, opWithLog(state.SetOp(setK, setV),
+			log.With().
+				Str("op", "set").
+				Str("key", setK).
+				Str("value", setV).
+				Logger()))
 	}
 	for _, key := range spec.Delete {
-		ops = append(ops, state.DelOp(key))
+		ops = append(ops, opWithLog(state.DelOp(key),
+			log.With().
+				Str("op", "del").
+				Str("key", key).
+				Logger()))
 	}
-	return &StateHandler{provider: provider, ops: ops}
+	return &StateHandler{
+		provider: provider,
+		ops:      ops,
+		log:      log.With().Str("handler", "state").Logger(),
+	}
 }

@@ -91,10 +91,18 @@ func (h *ContextFilter) Check(ctx context.Context, update *telegram.Update) (boo
 	if err != nil {
 		return false, errors.Wrap(err, "check context")
 	}
-	baseCheck, err := h.base.Check(ctx, update)
-	if err != nil {
-		return false, err
+	if !ctxCheck {
+		return false, nil
+	}
+	if h.base != nil {
+		check, err := h.base.Check(ctx, update)
+		if err != nil {
+			return false, err
+		}
+		if !check {
+			return false, nil
+		}
 	}
 
-	return baseCheck && ctxCheck, nil
+	return true, nil
 }

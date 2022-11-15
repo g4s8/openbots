@@ -12,10 +12,12 @@ import (
 	"github.com/g4s8/openbots/internal/bot/handlers"
 	"github.com/g4s8/openbots/pkg/api"
 	ctx "github.com/g4s8/openbots/pkg/context"
+	logwrap "github.com/g4s8/openbots/pkg/log"
 	"github.com/g4s8/openbots/pkg/spec"
 	"github.com/g4s8/openbots/pkg/state"
 	"github.com/g4s8/openbots/pkg/types"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -27,15 +29,9 @@ type eventHandler struct {
 	types.Handler
 }
 
-type stateHandler struct {
-	types.EventFilter
-	types.StateHandler
-}
-
 type Bot struct {
-	handlers      []*eventHandler
-	stateHandlers []*stateHandler
-	apiHandlers   map[string][]api.Handler
+	handlers    []*eventHandler
+	apiHandlers map[string][]api.Handler
 
 	apiAddr string
 
@@ -46,20 +42,22 @@ type Bot struct {
 	stopOnce   sync.Once
 	quitCh     chan struct{}
 	doneCh     chan struct{}
+
+	log zerolog.Logger
 }
 
 func New(botAPI *telegram.BotAPI, state types.StateProvider, context types.ContextProvider,
-	apiAddr string) *Bot {
+	apiAddr string, log zerolog.Logger) *Bot {
 	return &Bot{
-		handlers:      make([]*eventHandler, 0),
-		stateHandlers: make([]*stateHandler, 0),
-		apiHandlers:   make(map[string][]api.Handler),
-		apiAddr:       apiAddr,
-		context:       context,
-		state:         state,
-		botAPI:        botAPI,
-		quitCh:        make(chan struct{}, 1),
-		doneCh:        make(chan struct{}, 1),
+		handlers:    make([]*eventHandler, 0),
+		apiHandlers: make(map[string][]api.Handler),
+		apiAddr:     apiAddr,
+		context:     context,
+		state:       state,
+		botAPI:      botAPI,
+		quitCh:      make(chan struct{}, 1),
+		doneCh:      make(chan struct{}, 1),
+		log:         log,
 	}
 }
 
@@ -105,7 +103,16 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 	if s.Config.Api != nil {
 		apiAddr = s.Config.Api.Address
 	}
-	bot := New(botAPI, sp, cp, apiAddr)
+
+	log := zerolog.New(zerolog.ConsoleWriter{Out: log.Writer()}).With().Timestamp().Logger()
+	if s.Debug {
+		log = log.Level(zerolog.DebugLevel)
+	} else {
+		log = log.Level(zerolog.InfoLevel)
+	}
+	sp = logwrap.WrapStateProvider(sp, log)
+	cp = logwrap.WrapContextProvider(cp, log)
+	bot := New(botAPI, sp, cp, apiAddr, log)
 
 	if err := bot.SetupHandlersFromSpec(s.Handlers); err != nil {
 		return nil, errors.Wrap(err, "setup handlers")
@@ -123,10 +130,9 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 	for _, h := range src {
 		var (
-			filter       types.EventFilter
-			hs           []types.Handler
-			stateHandler types.StateHandler
-			err          error
+			filter types.EventFilter
+			hs     []types.Handler
+			err    error
 		)
 
 		if h.Trigger.Message != nil {
@@ -141,43 +147,35 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 				return errors.Wrap(err, "create callback event filter")
 			}
 		}
-		if h.Trigger.Context != "" && filter != nil {
+		if h.Trigger.Context != "" {
 			filter = handlers.NewContextFilter(filter, b.context, h.Trigger.Context)
 		}
 		if h.Replies != nil {
-			hs = append(hs, adaptors.Replies(b.state, h.Replies))
+			hs = append(hs, adaptors.Replies(b.state, h.Replies, b.log))
 		}
 		if h.State != nil {
-			stateHandler = handlers.NewStateHandlerFromSpec(b.state, h.State)
-			if err != nil {
-				return errors.Wrap(err, "create state handler")
-			}
+			hs = append(hs, handlers.NewStateHandlerFromSpec(b.state, h.State, b.log))
 		}
-		if len(hs) > 0 && h.Context != nil {
-			for i, han := range hs {
-				if h.Context.Set != "" {
-					hs[i] = handlers.NewContextSetter(han, b.context, h.Context.Set)
-				}
-				if h.Context.Delete != "" {
-					hs[i] = handlers.NewContextDeleter(han, b.context, h.Context.Delete)
-				}
+		if h.Context != nil {
+			if h.Context.Set != "" {
+				hs = append(hs, handlers.NewContextSetter(b.context, h.Context.Set, b.log))
+			}
+			if h.Context.Delete != "" {
+				hs = append(hs, handlers.NewContextDeleter(b.context, h.Context.Delete, b.log))
 			}
 		}
 		if h.Webhook != nil {
-			hs = append(hs, adaptors.Webhook(h.Webhook))
+			hs = append(hs, adaptors.Webhook(h.Webhook, b.state, b.log))
 		}
 
 		if filter == nil {
 			return errors.New("no event filter")
 		}
-		if len(hs) == 0 && stateHandler == nil {
+		if len(hs) == 0 {
 			return errors.New("no handler")
 		}
 		for _, h := range hs {
 			b.Handle(filter, h)
-		}
-		if stateHandler != nil {
-			b.HandleState(filter, stateHandler)
 		}
 	}
 	return nil
@@ -197,10 +195,6 @@ func (b *Bot) SetupApiHandlersFromSpec(src []*spec.ApiHandler) error {
 
 func (b *Bot) Handle(filter types.EventFilter, h types.Handler) {
 	b.handlers = append(b.handlers, &eventHandler{EventFilter: filter, Handler: h})
-}
-
-func (b *Bot) HandleState(filter types.EventFilter, h types.StateHandler) {
-	b.stateHandlers = append(b.stateHandlers, &stateHandler{EventFilter: filter, StateHandler: h})
 }
 
 func (b *Bot) ApiHandler(id string, h api.Handler) {
@@ -264,30 +258,26 @@ func (b *Bot) Stop() error {
 }
 
 func (b *Bot) HandleUpdate(ctx context.Context, upd *telegram.Update) {
+	chatID := handlers.ChatID(upd)
+	log := b.log.With().Str("chat-id", chatID.String()).Logger()
+	log.Debug().Msg("Handling update")
+
+	handlers := make([]types.Handler, 0)
 	for _, h := range b.handlers {
 		if check, err := h.Check(ctx, upd); err != nil {
 			log.Printf("Filter error: %v", err)
 			continue
-		} else if !check {
-			continue
+		} else if check {
+			handlers = append(handlers, h)
 		}
-
+	}
+	log.Debug().Int("handlers", len(handlers)).Msg("Handlers found")
+	for i, h := range handlers {
+		log.Debug().Int("handler", i).Msg("Handling")
 		if err := h.Handle(ctx, upd, b.botAPI); err != nil {
-			log.Printf("Handler error: %v", err)
+			log.Error().Err(err).Msg("Handler failed")
 			continue
 		}
 	}
-	for _, sh := range b.stateHandlers {
-		if check, err := sh.Check(ctx, upd); err != nil {
-			log.Printf("State filter error: %v", err)
-			continue
-		} else if !check {
-			continue
-		}
-
-		if err := sh.Handle(ctx, upd); err != nil {
-			log.Printf("State handler error: %v", err)
-			continue
-		}
-	}
+	log.Debug().Msg("Update handled")
 }

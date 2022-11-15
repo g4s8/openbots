@@ -8,10 +8,11 @@ import (
 	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"go.uber.org/multierr"
 )
 
-func MessageRepply(sp types.StateProvider, s *spec.MessageReply) *handlers.MessageReply {
+func MessageRepply(sp types.StateProvider, s *spec.MessageReply, log zerolog.Logger) *handlers.MessageReply {
 	var modifiers []handlers.MessageModifier
 	if s.Markup != nil && len(s.Markup.Keyboard) > 0 {
 		modifiers = append(modifiers, handlers.MessageWithKeyboard(s.Markup.Keyboard))
@@ -23,7 +24,7 @@ func MessageRepply(sp types.StateProvider, s *spec.MessageReply) *handlers.Messa
 	if s.ParseMode != "" {
 		modifiers = append(modifiers, handlers.MessageWithParseMode(string(s.ParseMode)))
 	}
-	replier := handlers.NewMessageReplier(sp, s.Text, modifiers...)
+	replier := handlers.NewMessageReplier(sp, s.Text, log, modifiers...)
 	return handlers.NewMessageReply(replier)
 }
 
@@ -61,12 +62,12 @@ func (h *multiHandler) Handle(ctx context.Context, upd *telegram.Update, bot *te
 	return nil
 }
 
-func Replies(sp types.StateProvider, r []*spec.Reply) types.Handler {
+func Replies(sp types.StateProvider, r []*spec.Reply, log zerolog.Logger) types.Handler {
 	var handlers []types.Handler
 	for _, reply := range r {
 		var handler types.Handler
 		if reply.Message != nil {
-			handler = MessageRepply(sp, reply.Message)
+			handler = MessageRepply(sp, reply.Message, log)
 		} else if reply.Callback != nil {
 			handler = CallbackReply(reply.Callback)
 		}
@@ -77,6 +78,6 @@ func Replies(sp types.StateProvider, r []*spec.Reply) types.Handler {
 	return &multiHandler{handlers}
 }
 
-func Webhook(s *spec.Webhook) types.Handler {
-	return handlers.NewWebhook(s.URL, s.Method, s.Body)
+func Webhook(s *spec.Webhook, sp types.StateProvider, log zerolog.Logger) types.Handler {
+	return handlers.NewWebhook(s.URL, s.Method, s.Body, sp, log)
 }

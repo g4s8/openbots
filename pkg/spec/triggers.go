@@ -13,7 +13,7 @@ type Trigger struct {
 
 func (t *Trigger) validate() (errs []error) {
 	errs = make([]error, 0)
-	if t.Message == nil && t.Callback == nil {
+	if t.Message == nil && t.Context == "" && t.Callback == nil {
 		errs = append(errs, errors.New("empty trigger"))
 	}
 	if t.Message != nil {
