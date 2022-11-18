@@ -1,6 +1,10 @@
 package state
 
-import "github.com/g4s8/openbots/pkg/types"
+import (
+	"sort"
+
+	"github.com/g4s8/openbots/pkg/types"
+)
 
 var _ types.State = (*UserState)(nil)
 
@@ -55,6 +59,8 @@ func (s *UserState) changes() (out changeReport) {
 			out.deleted = append(out.deleted, k)
 		}
 	}
+	sort.Strings(out.added)
+	sort.Strings(out.deleted)
 	return
 }
 
