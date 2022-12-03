@@ -19,7 +19,7 @@ func MessageRepply(sp types.StateProvider, s *spec.MessageReply, log zerolog.Log
 	}
 	if s.Markup != nil && len(s.Markup.InlineKeyboard) > 0 {
 		modifiers = append(modifiers, handlers.MessageWithInlinceKeyboard(
-			inlineButtonsFromSpec(s.Markup.InlineKeyboard)))
+			inlineKeyboardFromSpec(s.Markup.InlineKeyboard)))
 	}
 	if s.ParseMode != "" {
 		modifiers = append(modifiers, handlers.MessageWithParseMode(string(s.ParseMode)))
@@ -32,8 +32,8 @@ func CallbackReply(s *spec.CallbackReply) *handlers.CallbackReply {
 	return handlers.NewCallbackReply(s.Text, s.Alert)
 }
 
-func inlineButtonsFromSpec(bts [][]spec.InlineButton) (res [][]handlers.InlineButton) {
-	res = make([][]handlers.InlineButton, len(bts))
+func inlineKeyboardFromSpec(bts [][]spec.InlineButton) (res handlers.InlineKeyboard) {
+	res = make(handlers.InlineKeyboard, len(bts))
 	for i, row := range bts {
 		res[i] = make([]handlers.InlineButton, len(row))
 		for j, btn := range row {
@@ -65,14 +65,15 @@ func (h *multiHandler) Handle(ctx context.Context, upd *telegram.Update, bot *te
 func Replies(sp types.StateProvider, r []*spec.Reply, log zerolog.Logger) types.Handler {
 	var handlers []types.Handler
 	for _, reply := range r {
-		var handler types.Handler
 		if reply.Message != nil {
-			handler = MessageRepply(sp, reply.Message, log)
-		} else if reply.Callback != nil {
-			handler = CallbackReply(reply.Callback)
+			handlers = append(handlers,
+				MessageRepply(sp, reply.Message, log))
 		}
-		if handler != nil {
-			handlers = append(handlers, handler)
+		if reply.Callback != nil {
+			handlers = append(handlers, CallbackReply(reply.Callback))
+		}
+		if reply.Edit != nil {
+			handlers = append(handlers, newEdit(reply.Edit, sp, log))
 		}
 	}
 	return &multiHandler{handlers}
@@ -80,4 +81,13 @@ func Replies(sp types.StateProvider, r []*spec.Reply, log zerolog.Logger) types.
 
 func Webhook(s *spec.Webhook, sp types.StateProvider, log zerolog.Logger) types.Handler {
 	return handlers.NewWebhook(s.URL, s.Method, s.Body, sp, log)
+}
+
+func newEdit(s *spec.Edit, sp types.StateProvider, log zerolog.Logger) types.Handler {
+	if s.Message == nil {
+		log.Fatal().Msg("Invalid edit spec: message is empty")
+	}
+	msg := s.Message
+	return handlers.NewMessageEdit(msg.Caption, msg.Text, inlineKeyboardFromSpec(msg.InlineKeyboard),
+		sp, log)
 }

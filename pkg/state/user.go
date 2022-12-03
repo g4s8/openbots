@@ -2,11 +2,18 @@ package state
 
 import (
 	"sort"
+	"sync"
 
 	"github.com/g4s8/openbots/pkg/types"
 )
 
 var _ types.State = (*UserState)(nil)
+
+var statePool = sync.Pool{
+	New: func() any {
+		return makeUserState()
+	},
+}
 
 type UserState struct {
 	data map[string]string
@@ -14,6 +21,10 @@ type UserState struct {
 }
 
 func NewUserState() *UserState {
+	return statePool.Get().(*UserState)
+}
+
+func makeUserState() *UserState {
 	res := &UserState{
 		data: make(map[string]string),
 		chng: make(map[string]stateChange),
@@ -64,8 +75,16 @@ func (s *UserState) changes() (out changeReport) {
 	return
 }
 
+func (s *UserState) Close() {
+	s.reset()
+	statePool.Put(s)
+}
+
 func (s *UserState) reset() {
-	// for tests
-	s.data = make(map[string]string)
-	s.chng = make(map[string]stateChange)
+	for k := range s.data {
+		delete(s.data, k)
+	}
+	for k := range s.chng {
+		delete(s.chng, k)
+	}
 }

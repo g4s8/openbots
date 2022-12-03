@@ -66,7 +66,7 @@ Full feature list:
  - [x] reply with Markup, MarkupV2, HTML messages
  - [x] switch context, handle context-based updates
  - [x] keep state data and interpolate state in replies
- - [ ] edit message
+ - [x] edit message
  - [ ] reply with images
  - [ ] handle image messages
  - [ ] delete messages

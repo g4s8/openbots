@@ -118,3 +118,39 @@ handlers:
             text: "We'll call you in five minutes"
             alert: true
 ```
+
+## Edit message
+
+You can edit message with inline button by using `edit` element, it allows to
+edit caption, text and inline keyboard of message.
+
+*There are some restrictions on edit messages*:
+ - Caption can't be used together with text or inlineKeyboard edits
+ - Text edits and inlineKeynoard edits could be used in one edit reply
+ - If you don't specify inlineKeyboard for edits, original buttons will be removed on edit
+
+```yaml
+- on:
+    message:
+      command: start
+  reply:
+    - message:
+        text: "Click the button to see message edits"
+        markup:
+          inlineKeyboard:
+            -
+              - text: "Click"
+                callback: callback-1
+- on:
+    callback: callback-1
+  reply:
+    - callback:
+        text: "Click"
+    - edit:
+        message:
+          text: "New text for message"
+          inlineKeyboard:
+            -
+              - text: "Button"
+                callback: callback-2
+```

@@ -12,11 +12,6 @@ import (
 
 type (
 	MessageModifier func(*telegram.MessageConfig)
-	InlineButton    struct {
-		Text     string
-		URL      string
-		Callback string
-	}
 )
 
 func MessageWithKeyboard(keyboard [][]string) MessageModifier {
@@ -36,25 +31,12 @@ func MessageWithKeyboard(keyboard [][]string) MessageModifier {
 	}
 }
 
-func MessageWithInlinceKeyboard(keyboard [][]InlineButton) MessageModifier {
+func MessageWithInlinceKeyboard(keyboard InlineKeyboard) MessageModifier {
 	return func(msg *telegram.MessageConfig) {
 		if len(keyboard) == 0 {
 			return
 		}
-		buttons := make([][]telegram.InlineKeyboardButton, len(keyboard))
-		for i, row := range keyboard {
-			buttonRow := make([]telegram.InlineKeyboardButton, len(row))
-			for j, btn := range row {
-				buttonRow[j].Text = btn.Text
-				if btn.URL != "" {
-					setStr(&buttonRow[j].URL, btn.URL)
-				} else if btn.Callback != "" {
-					setStr(&buttonRow[j].CallbackData, btn.Callback)
-				}
-			}
-			buttons[i] = buttonRow
-		}
-		msg.ReplyMarkup = telegram.NewInlineKeyboardMarkup(buttons...)
+		msg.ReplyMarkup = keyboard.telegramMarkup()
 	}
 }
 
@@ -67,7 +49,10 @@ func MessageWithParseMode(mode string) MessageModifier {
 func NewMessageReplier(sp types.StateProvider, text string, logger zerolog.Logger, modifiers ...MessageModifier) MessageReplier {
 	return func(ctx context.Context, upd *telegram.Update, bot *telegram.BotAPI) error {
 		logger = logger.With().Str("handler", "reply_message").Logger()
+
 		state := state.NewUserState()
+		defer state.Close()
+
 		chatID := ChatID(upd)
 		if err := sp.Load(ctx, chatID, state); err != nil {
 			return errors.Wrap(err, "load state")
