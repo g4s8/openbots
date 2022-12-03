@@ -9,11 +9,12 @@ type Reply struct {
 	Message  *MessageReply  `yaml:"message"`
 	Callback *CallbackReply `yaml:"callback"`
 	Edit     *Edit          `yaml:"edit"`
+	Delete   bool           `yaml:"delete"`
 }
 
 func (r *Reply) validate() (errs []error) {
 	errs = make([]error, 0)
-	if r.Message == nil && r.Callback == nil && r.Edit == nil {
+	if r.Message == nil && r.Callback == nil && r.Edit == nil && !r.Delete {
 		errs = append(errs, errors.New("empty reply"))
 	}
 	if r.Message != nil {

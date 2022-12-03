@@ -154,3 +154,30 @@ edit caption, text and inline keyboard of message.
               - text: "Button"
                 callback: callback-2
 ```
+
+## Delete message
+
+Callback handler can delete message of the callback button, just put `delete: true`
+to reply handler:
+
+```yaml
+bot:
+  handlers:
+    - on:
+        message:
+          command: start
+      reply:
+        - message:
+            text: "Click the button to delete this message"
+            markup:
+              inlineKeyboard:
+                -
+                  - text: "Delete"
+                    callback: delete
+    - on:
+        callback: delete
+      reply:
+        - callback:
+            text: "Deleted"
+          delete: true
+```

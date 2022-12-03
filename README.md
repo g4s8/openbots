@@ -69,7 +69,7 @@ Full feature list:
  - [x] edit message
  - [ ] reply with images
  - [ ] handle image messages
- - [ ] delete messages
+ - [x] delete messages
  - [ ] API:
    - [x] send message to particular user
  - [x] call webhook on update

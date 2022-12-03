@@ -75,6 +75,9 @@ func Replies(sp types.StateProvider, r []*spec.Reply, log zerolog.Logger) types.
 		if reply.Edit != nil {
 			handlers = append(handlers, newEdit(reply.Edit, sp, log))
 		}
+		if reply.Delete {
+			handlers = append(handlers, newDelete(log))
+		}
 	}
 	return &multiHandler{handlers}
 }
@@ -90,4 +93,8 @@ func newEdit(s *spec.Edit, sp types.StateProvider, log zerolog.Logger) types.Han
 	msg := s.Message
 	return handlers.NewMessageEdit(msg.Caption, msg.Text, inlineKeyboardFromSpec(msg.InlineKeyboard),
 		sp, log)
+}
+
+func newDelete(logger zerolog.Logger) types.Handler {
+	return handlers.NewMessageDelete(logger)
 }
