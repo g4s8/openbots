@@ -18,6 +18,8 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+      - name: Install deps
+        run: make install-linters
       - name: Build
         run: make build
       - name: Test

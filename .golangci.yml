@@ -1,0 +1,17 @@
+run:
+  deadline: 3m
+  tests: true
+linters:
+  enable:
+    - deadcode
+    - errcheck
+    - gofmt
+    - goimports
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - varcheck
+    - bodyclose
