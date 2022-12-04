@@ -1,4 +1,4 @@
-.PHONY: build bin clean test test-race docker lint install-linters
+.PHONY: build bin clean test test-race docker vet
 
 .DEFAULT_GOAL := build
 
@@ -28,7 +28,6 @@ ifeq ($(V),1)
 	GO_TEST_FLAGS += -v
 	GO_VET_FLAGS += -v
 endif
-LINTER_VERSION=v1.50.0
 
 build:
 	${Q}${BUILD_ENV} go build $(GO_BUILD_ARGS) -o /dev/null $(GO_PKG)
@@ -45,16 +44,11 @@ test: build
 test-race: test
 	${Q}${BUILD_ENV} CGO_ENABLED=1 go test $(GO_TEST_FLAGS) -race $(GO_PKG)
 
-lint:
+vet:
 	${Q}go vet $(GO_VET_FLAGS) $(GO_PKG)
-	${Q}golangci-lint run
 
 docker:
 	${Q}docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
 
 clean:
 	${Q}rm -rf $(BIN_DIR)
-
-install-linters:
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | \
-		sh -s -- -b $$(go env GOPATH)/bin ${LINTER_VERSION}

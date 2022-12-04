@@ -3,7 +3,6 @@ run:
   tests: true
 linters:
   enable:
-    - deadcode
     - errcheck
     - gofmt
     - goimports
@@ -13,5 +12,4 @@ linters:
     - staticcheck
     - typecheck
     - unused
-    - varcheck
     - bodyclose
