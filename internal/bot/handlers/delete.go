@@ -32,7 +32,7 @@ func (d *MessageDelete) Handle(ctx context.Context, upd *telegram.Update, api *t
 
 	d.logger.Debug().Int("message_id", msgID).Int64("chat_id", int64(chatID)).Msg("Deleting message")
 
-	if _, err := api.Send(msg); err != nil {
+	if _, err := api.Request(msg); err != nil {
 		return errors.Wrap(err, "delete message")
 	}
 	return nil
