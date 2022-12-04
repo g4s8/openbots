@@ -20,7 +20,7 @@ var ErrArgumentNotFound = errors.New("argument not found")
 func (r *refArg) Get(req api.Request) (string, error) {
 	val, ok := req.Payload[r.ref]
 	if !ok {
-		api.WrapError(ErrArgumentNotFound, api.InvalidRequestDataError,
+		return "", api.WrapError(ErrArgumentNotFound, api.InvalidRequestDataError,
 			fmt.Sprintf("argument `%s` was not present in request payload", r.ref))
 	}
 	return val, nil

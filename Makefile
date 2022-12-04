@@ -1,4 +1,4 @@
-.PHONY: build bin clean test test-race docker lint
+.PHONY: build bin clean test test-race docker vet
 
 .DEFAULT_GOAL := build
 
@@ -44,7 +44,7 @@ test: build
 test-race: test
 	${Q}${BUILD_ENV} CGO_ENABLED=1 go test $(GO_TEST_FLAGS) -race $(GO_PKG)
 
-lint:
+vet:
 	${Q}go vet $(GO_VET_FLAGS) $(GO_PKG)
 
 docker:
