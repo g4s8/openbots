@@ -18,14 +18,13 @@ func MessageRepply(sp types.StateProvider, s *spec.MessageReply, log zerolog.Log
 		modifiers = append(modifiers, handlers.MessageWithKeyboard(s.Markup.Keyboard))
 	}
 	if s.Markup != nil && len(s.Markup.InlineKeyboard) > 0 {
-		modifiers = append(modifiers, handlers.MessageWithInlinceKeyboard(
+		modifiers = append(modifiers, handlers.MessageWithInlineKeyboard(
 			inlineKeyboardFromSpec(s.Markup.InlineKeyboard)))
 	}
 	if s.ParseMode != "" {
 		modifiers = append(modifiers, handlers.MessageWithParseMode(string(s.ParseMode)))
 	}
-	replier := handlers.NewMessageReplier(sp, s.Text, log, modifiers...)
-	return handlers.NewMessageReply(replier)
+	return handlers.NewMessageReply(sp, s.Text, log, modifiers...)
 }
 
 func CallbackReply(s *spec.CallbackReply) *handlers.CallbackReply {
