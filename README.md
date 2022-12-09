@@ -68,6 +68,8 @@ Full feature list:
  - [x] keep state data and interpolate state in replies
  - [x] edit message
  - [ ] reply with images
+   - [x] reply image from file
+   - [ ] reply image by URL
  - [ ] handle image messages
  - [x] delete messages
  - [ ] API:

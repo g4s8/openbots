@@ -181,3 +181,20 @@ bot:
             text: "Deleted"
           delete: true
 ```
+
+## Reply image
+
+Bot can reply with image content. Image handler can be configured using these fields:
+ - `name` (requied, string) - image name
+ - `file` (requied, string) - image file path on file system
+
+Example:
+```yaml
+- on:
+    message:
+      command: start
+  reply:
+    - image:
+        name: Test image
+        file: /tmp/assets/test-image.png
+```

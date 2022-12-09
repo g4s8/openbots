@@ -1,4 +1,4 @@
-.PHONY: build bin clean test test-race docker vet
+.PHONY: build bin clean test test-race docker vet site
 
 .DEFAULT_GOAL := build
 
@@ -52,3 +52,6 @@ docker:
 
 clean:
 	${Q}rm -rf $(BIN_DIR)
+
+site:
+	${Q}hugo --source ./site/

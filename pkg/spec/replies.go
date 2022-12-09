@@ -10,11 +10,12 @@ type Reply struct {
 	Callback *CallbackReply `yaml:"callback"`
 	Edit     *Edit          `yaml:"edit"`
 	Delete   bool           `yaml:"delete"`
+	Image    *ImageReply    `yaml:"image"`
 }
 
 func (r *Reply) validate() (errs []error) {
 	errs = make([]error, 0)
-	if r.Message == nil && r.Callback == nil && r.Edit == nil && !r.Delete {
+	if r.Message == nil && r.Callback == nil && r.Edit == nil && !r.Delete && r.Image == nil {
 		errs = append(errs, errors.New("empty reply"))
 	}
 	if r.Message != nil {
@@ -25,6 +26,9 @@ func (r *Reply) validate() (errs []error) {
 	}
 	if r.Edit != nil {
 		errs = append(errs, r.Edit.validate()...)
+	}
+	if r.Image != nil {
+		errs = append(errs, r.Image.validate()...)
 	}
 	return
 }
@@ -119,4 +123,20 @@ func (r *CallbackReply) validate() []error {
 		return []error{errors.New("empty callback reply")}
 	}
 	return []error{}
+}
+
+type ImageReply struct {
+	Name string `yaml:"name"`
+	File string `yaml:"file"`
+}
+
+func (r *ImageReply) validate() []error {
+	var errs []error
+	if r.Name == "" {
+		errs = append(errs, errors.New("empty image name"))
+	}
+	if r.File == "" {
+		errs = append(errs, errors.New("empty image file"))
+	}
+	return errs
 }

@@ -77,6 +77,9 @@ func Replies(sp types.StateProvider, r []*spec.Reply, log zerolog.Logger) types.
 		if reply.Delete {
 			handlers = append(handlers, newDelete(log))
 		}
+		if reply.Image != nil {
+			handlers = append(handlers, newImageReply(reply.Image, log))
+		}
 	}
 	return &multiHandler{handlers}
 }
@@ -96,4 +99,11 @@ func newEdit(s *spec.Edit, sp types.StateProvider, log zerolog.Logger) types.Han
 
 func newDelete(logger zerolog.Logger) types.Handler {
 	return handlers.NewMessageDelete(logger)
+}
+
+func newImageReply(s *spec.ImageReply, log zerolog.Logger) types.Handler {
+	if s.File != "" {
+		return handlers.NewReplyImageFile(s.File, s.Name, log)
+	}
+	return nil
 }
