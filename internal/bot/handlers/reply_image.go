@@ -3,7 +3,6 @@ package handlers
 import (
 	"bufio"
 	"context"
-	"os"
 
 	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -15,35 +14,37 @@ var _ types.Handler = (*ReplyImage)(nil)
 
 // ReplyImage sends image to chat.
 type ReplyImage struct {
-	file   string
+	key    string
 	name   string
+	assets types.Assets
 	logger zerolog.Logger
 }
 
-// NewReplyImageFile creates new ReplyImage handler using image from file path.
-func NewReplyImageFile(file, name string, logger zerolog.Logger) *ReplyImage {
+// NewReplyImageFile creates new ReplyImage handler using image from key.
+func NewReplyImageFile(key, name string, assets types.Assets,
+	logger zerolog.Logger) *ReplyImage {
 	return &ReplyImage{
-		file:   file,
+		key:    key,
 		name:   name,
+		assets: assets,
 		logger: logger,
 	}
 }
 
 func (h *ReplyImage) Handle(ctx context.Context, upd *telegram.Update,
 	api *telegram.BotAPI) error {
-	f, err := os.Open(h.file)
+	asset, err := h.assets.LoadAsset(ctx, h.key)
 	if err != nil {
-		return errors.Wrap(err, "open image file")
+		return errors.Wrap(err, "load asset")
 	}
-	buff := bufio.NewReader(f)
 	defer func() {
-		if err := f.Close(); err != nil {
+		if err := asset.Close(); err != nil {
 			h.logger.Error().Err(err).Msg("Close image file")
 		}
 	}()
 	fr := telegram.FileReader{
 		Name:   h.name,
-		Reader: buff,
+		Reader: bufio.NewReader(asset),
 	}
 	chatID := ChatID(upd)
 	msg := telegram.NewPhoto(int64(chatID), fr)

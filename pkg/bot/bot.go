@@ -5,12 +5,14 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/g4s8/openbots/internal/bot/adaptors"
 	"github.com/g4s8/openbots/internal/bot/handlers"
 	"github.com/g4s8/openbots/pkg/api"
+	"github.com/g4s8/openbots/pkg/assets"
 	ctx "github.com/g4s8/openbots/pkg/context"
 	logwrap "github.com/g4s8/openbots/pkg/log"
 	"github.com/g4s8/openbots/pkg/spec"
@@ -37,6 +39,7 @@ type Bot struct {
 
 	context    types.ContextProvider
 	state      types.StateProvider
+	assets     types.Assets
 	botAPI     *telegram.BotAPI
 	apiService *api.Service
 	stopOnce   sync.Once
@@ -46,7 +49,8 @@ type Bot struct {
 	log zerolog.Logger
 }
 
-func New(botAPI *telegram.BotAPI, state types.StateProvider, context types.ContextProvider,
+func New(botAPI *telegram.BotAPI, state types.StateProvider,
+	context types.ContextProvider, assets types.Assets,
 	apiAddr string, log zerolog.Logger) *Bot {
 	return &Bot{
 		handlers:    make([]*eventHandler, 0),
@@ -54,6 +58,7 @@ func New(botAPI *telegram.BotAPI, state types.StateProvider, context types.Conte
 		apiAddr:     apiAddr,
 		context:     context,
 		state:       state,
+		assets:      assets,
 		botAPI:      botAPI,
 		quitCh:      make(chan struct{}, 1),
 		doneCh:      make(chan struct{}, 1),
@@ -70,10 +75,29 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 
 	botID := botAPI.Self.ID
 
+	log := zerolog.New(zerolog.ConsoleWriter{Out: log.Writer()}).With().Timestamp().Logger()
+	if s.Debug {
+		log = log.Level(zerolog.DebugLevel)
+	} else {
+		log = log.Level(zerolog.InfoLevel)
+	}
+
 	var (
 		sp types.StateProvider
 		cp types.ContextProvider
+		ap types.Assets
 	)
+
+	if s.Config == nil {
+		s.Config = spec.DefaultConfig
+	}
+	if s.Config.Persistence == nil {
+		s.Config.Persistence = spec.DefaultConfig.Persistence
+	}
+	if s.Config.Assets == nil {
+		s.Config.Assets = spec.DefaultConfig.Assets
+	}
+
 	switch s.Config.Persistence.Type {
 	case spec.MemoryPersistence:
 		sp = state.NewMemory(s.State)
@@ -86,7 +110,7 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 		if s.Config.Persistence.DBConfig.NoSSL {
 			conString += " sslmode=disable"
 		}
-		log.Println("Connecting database")
+		log.Debug().Msg("Connecting database")
 		db, err := sql.Open("postgres", conString)
 		if err != nil {
 			return nil, errors.Wrap(err, "open database")
@@ -94,7 +118,7 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 		if err := db.Ping(); err != nil {
 			return nil, errors.Wrap(err, "ping database")
 		}
-		log.Println("Database connected")
+		log.Debug().Msg("Database connected")
 		sp = state.NewDB(db, botID)
 		cp = ctx.NewDBProvider(db, botID)
 	}
@@ -104,15 +128,24 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 		apiAddr = s.Config.Api.Address
 	}
 
-	log := zerolog.New(zerolog.ConsoleWriter{Out: log.Writer()}).With().Timestamp().Logger()
-	if s.Debug {
-		log = log.Level(zerolog.DebugLevel)
-	} else {
-		log = log.Level(zerolog.InfoLevel)
+	if s.Config.Assets.Provider == "fs" {
+		var root string
+		if r, ok := s.Config.Assets.Params["root"]; ok {
+			root = r
+		} else {
+			wd, err := os.Getwd()
+			if err != nil {
+				return nil, errors.Wrap(err, "get working directory")
+			}
+			root = wd
+		}
+		ap = assets.NewFS(root, log)
 	}
+
 	sp = logwrap.WrapStateProvider(sp, log)
 	cp = logwrap.WrapContextProvider(cp, log)
-	bot := New(botAPI, sp, cp, apiAddr, log)
+
+	bot := New(botAPI, sp, cp, ap, apiAddr, log)
 
 	if err := bot.SetupHandlersFromSpec(s.Handlers); err != nil {
 		return nil, errors.Wrap(err, "setup handlers")
@@ -151,7 +184,7 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 			filter = handlers.NewContextFilter(filter, b.context, h.Trigger.Context)
 		}
 		if h.Replies != nil {
-			hs = append(hs, adaptors.Replies(b.state, h.Replies, b.log))
+			hs = append(hs, adaptors.Replies(b.state, b.assets, h.Replies, b.log))
 		}
 		if h.State != nil {
 			hs = append(hs, handlers.NewStateHandlerFromSpec(b.state, h.State, b.log))

@@ -67,9 +67,7 @@ Full feature list:
  - [x] switch context, handle context-based updates
  - [x] keep state data and interpolate state in replies
  - [x] edit message
- - [ ] reply with images
-   - [x] reply image from file
-   - [ ] reply image by URL
+ - [x] reply with images
  - [ ] handle image messages
  - [x] delete messages
  - [ ] API:

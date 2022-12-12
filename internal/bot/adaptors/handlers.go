@@ -61,7 +61,8 @@ func (h *multiHandler) Handle(ctx context.Context, upd *telegram.Update, bot *te
 	return nil
 }
 
-func Replies(sp types.StateProvider, r []*spec.Reply, log zerolog.Logger) types.Handler {
+func Replies(sp types.StateProvider, assets types.Assets,
+	r []*spec.Reply, log zerolog.Logger) types.Handler {
 	var handlers []types.Handler
 	for _, reply := range r {
 		if reply.Message != nil {
@@ -78,7 +79,7 @@ func Replies(sp types.StateProvider, r []*spec.Reply, log zerolog.Logger) types.
 			handlers = append(handlers, newDelete(log))
 		}
 		if reply.Image != nil {
-			handlers = append(handlers, newImageReply(reply.Image, log))
+			handlers = append(handlers, newImageReply(reply.Image, assets, log))
 		}
 	}
 	return &multiHandler{handlers}
@@ -101,9 +102,10 @@ func newDelete(logger zerolog.Logger) types.Handler {
 	return handlers.NewMessageDelete(logger)
 }
 
-func newImageReply(s *spec.ImageReply, log zerolog.Logger) types.Handler {
-	if s.File != "" {
-		return handlers.NewReplyImageFile(s.File, s.Name, log)
+func newImageReply(s *spec.ImageReply, assets types.Assets,
+	log zerolog.Logger) types.Handler {
+	if s.Key != "" {
+		return handlers.NewReplyImageFile(s.Key, s.Name, assets, log)
 	}
 	return nil
 }

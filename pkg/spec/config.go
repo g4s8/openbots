@@ -1,8 +1,18 @@
 package spec
 
+var DefaultConfig = &Config{
+	Persistence: &PersistenceConfig{
+		Type: MemoryPersistence,
+	},
+	Assets: &AssetsConfig{
+		Provider: "fs",
+	},
+}
+
 type Config struct {
-	Api         *ApiConfig
+	Api         *ApiConfig         `yaml:"api"`
 	Persistence *PersistenceConfig `yaml:"persistence"`
+	Assets      *AssetsConfig      `yaml:"assets"`
 }
 
 type ApiConfig struct {
@@ -28,4 +38,9 @@ type DBConfig struct {
 	Port     int    `yaml:"port"`
 	Database string `yaml:"database"`
 	NoSSL    bool   `yaml:"no_ssl"`
+}
+
+type AssetsConfig struct {
+	Provider string            `yaml:"provider"`
+	Params   map[string]string `yaml:"params"`
 }

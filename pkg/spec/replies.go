@@ -127,7 +127,7 @@ func (r *CallbackReply) validate() []error {
 
 type ImageReply struct {
 	Name string `yaml:"name"`
-	File string `yaml:"file"`
+	Key  string `yaml:"key"`
 }
 
 func (r *ImageReply) validate() []error {
@@ -135,7 +135,7 @@ func (r *ImageReply) validate() []error {
 	if r.Name == "" {
 		errs = append(errs, errors.New("empty image name"))
 	}
-	if r.File == "" {
+	if r.Key == "" {
 		errs = append(errs, errors.New("empty image file"))
 	}
 	return errs

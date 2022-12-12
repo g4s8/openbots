@@ -184,9 +184,28 @@ bot:
 
 ## Reply image
 
-Bot can reply with image content. Image handler can be configured using these fields:
+Bot can reply with image content.
+
+Image reply using assets provider which can be configured for bot globally.
+For now it supports only file-system provider, which load assets from local file-system:
+ - `provider` (string, required) - should be `fs`
+ - `params` (map, optional) - provider specific config params
+   - `root` (string, optional) - root dir for `fs` provider, current workdir will be used if empty
+
+If `assets` config is ommited, then default `fs` provider with current workdir as root will be used.
+
+Example:
+```yaml
+config:
+  assets:
+    provider: fs
+    params:
+      root: /var/bot/assets
+```
+
+Image handler can be configured using these fields:
  - `name` (requied, string) - image name
- - `file` (requied, string) - image file path on file system
+ - `key` (requied, string) - image key for assets provider.
 
 Example:
 ```yaml
@@ -196,5 +215,5 @@ Example:
   reply:
     - image:
         name: Test image
-        file: /tmp/assets/test-image.png
+        key: /tmp/assets/test-image.png
 ```
