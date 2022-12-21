@@ -61,7 +61,7 @@ func (h *multiHandler) Handle(ctx context.Context, upd *telegram.Update, bot *te
 	return nil
 }
 
-func Replies(sp types.StateProvider, assets types.Assets,
+func Replies(sp types.StateProvider, assets types.Assets, payments types.PaymentProviders,
 	r []*spec.Reply, log zerolog.Logger) types.Handler {
 	var handlers []types.Handler
 	for _, reply := range r {
@@ -80,6 +80,12 @@ func Replies(sp types.StateProvider, assets types.Assets,
 		}
 		if reply.Image != nil {
 			handlers = append(handlers, newImageReply(reply.Image, assets, log))
+		}
+		if reply.Invoice != nil {
+			handlers = append(handlers, newInvoice(reply.Invoice, payments, log))
+		}
+		if reply.PreCheckout != nil {
+			handlers = append(handlers, newPreCheckoutAnswer(reply.PreCheckout, log))
 		}
 	}
 	return &multiHandler{handlers}
@@ -108,4 +114,25 @@ func newImageReply(s *spec.ImageReply, assets types.Assets,
 		return handlers.NewReplyImageFile(s.Key, s.Name, assets, log)
 	}
 	return nil
+}
+
+func newInvoice(s *spec.Invoice, providers types.PaymentProviders, log zerolog.Logger) types.Handler {
+	prices := make([]handlers.InvoicePrice, len(s.Prices))
+	for i, p := range s.Prices {
+		prices[i] = handlers.InvoicePrice{
+			Label:  p.Label,
+			Amount: p.Amount,
+		}
+	}
+	return handlers.NewSendInvoice(providers, s.Provider, handlers.InvoiceConfig{
+		Title:       s.Title,
+		Description: s.Description,
+		Payload:     s.Payload,
+		Currency:    s.Currency,
+		Prices:      prices,
+	}, log)
+}
+
+func newPreCheckoutAnswer(s *spec.PreCheckoutAnswer, log zerolog.Logger) types.Handler {
+	return handlers.NewPreCheckout(s.Ok, s.ErrorMessage, log)
 }

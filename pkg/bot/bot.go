@@ -15,6 +15,7 @@ import (
 	"github.com/g4s8/openbots/pkg/assets"
 	ctx "github.com/g4s8/openbots/pkg/context"
 	logwrap "github.com/g4s8/openbots/pkg/log"
+	"github.com/g4s8/openbots/pkg/payments"
 	"github.com/g4s8/openbots/pkg/spec"
 	"github.com/g4s8/openbots/pkg/state"
 	"github.com/g4s8/openbots/pkg/types"
@@ -40,6 +41,7 @@ type Bot struct {
 	context    types.ContextProvider
 	state      types.StateProvider
 	assets     types.Assets
+	payments   types.PaymentProviders
 	botAPI     *telegram.BotAPI
 	apiService *api.Service
 	stopOnce   sync.Once
@@ -51,6 +53,7 @@ type Bot struct {
 
 func New(botAPI *telegram.BotAPI, state types.StateProvider,
 	context types.ContextProvider, assets types.Assets,
+	paymentProviders types.PaymentProviders,
 	apiAddr string, log zerolog.Logger) *Bot {
 	return &Bot{
 		handlers:    make([]*eventHandler, 0),
@@ -59,6 +62,7 @@ func New(botAPI *telegram.BotAPI, state types.StateProvider,
 		context:     context,
 		state:       state,
 		assets:      assets,
+		payments:    paymentProviders,
 		botAPI:      botAPI,
 		quitCh:      make(chan struct{}, 1),
 		doneCh:      make(chan struct{}, 1),
@@ -142,10 +146,21 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 		ap = assets.NewFS(root, log)
 	}
 
+	var paymentProviders types.PaymentProviders
+	if len(s.Config.PaymentProviders) > 0 {
+		m := make(map[string]string, len(s.Config.PaymentProviders))
+		for _, p := range s.Config.PaymentProviders {
+			m[p.Name] = p.Token
+		}
+		paymentProviders = payments.NewMapProvider(m)
+	} else {
+		paymentProviders = payments.EmptyProvider
+	}
+
 	sp = logwrap.WrapStateProvider(sp, log)
 	cp = logwrap.WrapContextProvider(cp, log)
 
-	bot := New(botAPI, sp, cp, ap, apiAddr, log)
+	bot := New(botAPI, sp, cp, ap, paymentProviders, apiAddr, log)
 
 	if err := bot.SetupHandlersFromSpec(s.Handlers); err != nil {
 		return nil, errors.Wrap(err, "setup handlers")
@@ -183,8 +198,16 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 		if h.Trigger.Context != "" {
 			filter = handlers.NewContextFilter(filter, b.context, h.Trigger.Context)
 		}
+		// TODO: refactor all filters/triggers similat to handlers
+		if h.Trigger.PreCheckout != nil {
+			filter = adaptors.NewPrecheckoutFilter(h.Trigger.PreCheckout)
+		}
+		if h.Trigger.PostCheckout != nil {
+			filter = adaptors.NewPostcheckoutFilter(h.Trigger.PostCheckout)
+		}
+
 		if h.Replies != nil {
-			hs = append(hs, adaptors.Replies(b.state, b.assets, h.Replies, b.log))
+			hs = append(hs, adaptors.Replies(b.state, b.assets, b.payments, h.Replies, b.log))
 		}
 		if h.State != nil {
 			hs = append(hs, handlers.NewStateHandlerFromSpec(b.state, h.State, b.log))

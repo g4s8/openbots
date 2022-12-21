@@ -15,6 +15,10 @@ func (cid ChatID) String() string {
 	return strconv.FormatInt(int64(cid), 10)
 }
 
+func (cid ChatID) Int64() int64 {
+	return int64(cid)
+}
+
 // Handler of telegram update message.
 type Handler interface {
 	Handle(context.Context, *telegram.Update, *telegram.BotAPI) error

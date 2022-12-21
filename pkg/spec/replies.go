@@ -6,16 +6,19 @@ import (
 )
 
 type Reply struct {
-	Message  *MessageReply  `yaml:"message"`
-	Callback *CallbackReply `yaml:"callback"`
-	Edit     *Edit          `yaml:"edit"`
-	Delete   bool           `yaml:"delete"`
-	Image    *ImageReply    `yaml:"image"`
+	Message     *MessageReply      `yaml:"message"`
+	Callback    *CallbackReply     `yaml:"callback"`
+	Edit        *Edit              `yaml:"edit"`
+	Delete      bool               `yaml:"delete"`
+	Image       *ImageReply        `yaml:"image"`
+	Invoice     *Invoice           `yaml:"invoice"`
+	PreCheckout *PreCheckoutAnswer `yaml:"preCheckout"`
 }
 
 func (r *Reply) validate() (errs []error) {
 	errs = make([]error, 0)
-	if r.Message == nil && r.Callback == nil && r.Edit == nil && !r.Delete && r.Image == nil {
+	if r.Message == nil && r.Callback == nil && r.Edit == nil && !r.Delete &&
+		r.Image == nil && r.Invoice == nil && r.PreCheckout == nil {
 		errs = append(errs, errors.New("empty reply"))
 	}
 	if r.Message != nil {
@@ -29,6 +32,9 @@ func (r *Reply) validate() (errs []error) {
 	}
 	if r.Image != nil {
 		errs = append(errs, r.Image.validate()...)
+	}
+	if r.Invoice != nil {
+		errs = append(errs, r.Invoice.validate()...)
 	}
 	return
 }

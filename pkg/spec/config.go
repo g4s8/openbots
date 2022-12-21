@@ -10,9 +10,10 @@ var DefaultConfig = &Config{
 }
 
 type Config struct {
-	Api         *ApiConfig         `yaml:"api"`
-	Persistence *PersistenceConfig `yaml:"persistence"`
-	Assets      *AssetsConfig      `yaml:"assets"`
+	Api              *ApiConfig         `yaml:"api"`
+	Persistence      *PersistenceConfig `yaml:"persistence"`
+	Assets           *AssetsConfig      `yaml:"assets"`
+	PaymentProviders []PaymentProvider  `yaml:"paymentProviders"`
 }
 
 type ApiConfig struct {
@@ -43,4 +44,9 @@ type DBConfig struct {
 type AssetsConfig struct {
 	Provider string            `yaml:"provider"`
 	Params   map[string]string `yaml:"params"`
+}
+
+type PaymentProvider struct {
+	Name  string `yaml:"name"`
+	Token string `yaml:"token"`
 }

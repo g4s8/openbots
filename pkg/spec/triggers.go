@@ -6,14 +6,17 @@ import (
 )
 
 type Trigger struct {
-	Message  *MessageTrigger  `yaml:"message"`
-	Callback *CallbackTrigger `yaml:"callback"`
-	Context  string           `yaml:"context"`
+	Message      *MessageTrigger      `yaml:"message"`
+	Callback     *CallbackTrigger     `yaml:"callback"`
+	Context      string               `yaml:"context"`
+	PreCheckout  *PreCheckoutTrigger  `yaml:"preCheckout"`
+	PostCheckout *PostCheckoutTrigger `yaml:"postCheckout"`
 }
 
 func (t *Trigger) validate() (errs []error) {
 	errs = make([]error, 0)
-	if t.Message == nil && t.Context == "" && t.Callback == nil {
+	if t.Message == nil && t.Context == "" && t.Callback == nil &&
+		t.PreCheckout == nil && t.PostCheckout == nil {
 		errs = append(errs, errors.New("empty trigger"))
 	}
 	if t.Message != nil {

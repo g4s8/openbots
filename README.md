@@ -74,6 +74,7 @@ Full feature list:
    - [x] send message to particular user
  - [x] call webhook on update
  - [x] database storage
+ - [x] payments
  
 ## Persistence
 
