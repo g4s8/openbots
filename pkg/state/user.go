@@ -61,17 +61,17 @@ func (s *UserState) Fill(data map[string]string) {
 	}
 }
 
-func (s *UserState) changes() (out changeReport) {
+func (s *UserState) Changes() (out types.StateChanges) {
 	for k, v := range s.chng {
 		switch v {
 		case stateChangeWrite:
-			out.added = append(out.added, k)
+			out.Added = append(out.Added, k)
 		case stateChangeDelete:
-			out.deleted = append(out.deleted, k)
+			out.Removed = append(out.Removed, k)
 		}
 	}
-	sort.Strings(out.added)
-	sort.Strings(out.deleted)
+	sort.Strings(out.Added)
+	sort.Strings(out.Removed)
 	return
 }
 

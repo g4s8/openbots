@@ -68,27 +68,22 @@ func (db *DB) Load(ctx context.Context, uid types.ChatID, state types.State) err
 
 func (db *DB) Update(ctx context.Context, uid types.ChatID, state types.State) error {
 	return db.transactional(ctx, func(tx *sql.Tx) error {
-		reporter, ok := state.(reporter)
-		if !ok {
-			return errors.New("state doesn't support reporting")
-		}
-
-		changes := reporter.changes()
-		if len(changes.deleted) > 0 {
+		changes := state.Changes()
+		if len(changes.Removed) > 0 {
 			stmt, err := tx.PrepareContext(ctx,
 				`DELETE FROM bot_state WHERE bot_id = $1 AND chat_id = $2 AND key = $3`)
 			if err != nil {
 				return errors.Wrap(err, "prepare delete")
 			}
 			defer stmt.Close()
-			for _, key := range changes.deleted {
+			for _, key := range changes.Removed {
 				fmt.Printf("DB(bot=%d chat=%d): delete %s\n", db.botID, uid, key)
 				if _, err = stmt.ExecContext(ctx, db.botID, uid, key); err != nil {
 					return errors.Wrap(err, "exec delete")
 				}
 			}
 		}
-		if len(changes.added) > 0 {
+		if len(changes.Added) > 0 {
 			stmt, err := tx.PrepareContext(ctx,
 				`INSERT INTO bot_state(bot_id, chat_id, key, value) VALUES($1, $2, $3, $4)
 			ON CONFLICT(bot_id, chat_id, key) DO UPDATE SET value = $4`)
@@ -96,7 +91,7 @@ func (db *DB) Update(ctx context.Context, uid types.ChatID, state types.State) e
 				return errors.Wrap(err, "prepare insert")
 			}
 			defer stmt.Close()
-			for _, key := range changes.added {
+			for _, key := range changes.Added {
 				val, _ := state.Get(key)
 				fmt.Printf("DB(bot=%d chat=%d): add %s=%s\n", db.botID, uid, key, val)
 				if _, err = stmt.ExecContext(ctx, db.botID, int64(uid), key, val); err != nil {

@@ -8,6 +8,16 @@ type State interface {
 	Delete(key string)
 	Map() map[string]string
 	Fill(map[string]string)
+	Changes() StateChanges
+}
+
+type StateChanges struct {
+	Added   []string
+	Removed []string
+}
+
+func (s *StateChanges) IsEmpty() bool {
+	return len(s.Added) == 0 && len(s.Removed) == 0
 }
 
 type StateProvider interface {

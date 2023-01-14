@@ -86,8 +86,8 @@ func TestUserState(t *testing.T) {
 		s.Set("one", "11")
 		s.Set("three", "3")
 		s.Delete("two")
-		changes := s.changes()
-		assert.That("added", changes.added, m.Eq([]string{"one", "three"}))
-		assert.That("deleted", changes.deleted, m.Eq([]string{"two"}))
+		changes := s.Changes()
+		assert.That("added", changes.Added, m.Eq([]string{"one", "three"}))
+		assert.That("deleted", changes.Removed, m.Eq([]string{"two"}))
 	})
 }

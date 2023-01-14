@@ -41,15 +41,8 @@ func (m *Memory) Load(_ context.Context, user types.ChatID, state types.State) e
 }
 
 func (m *Memory) Update(_ context.Context, user types.ChatID, state types.State) error {
-	var (
-		isRep bool
-		rep   changeReport
-	)
-	if r, ok := state.(reporter); ok {
-		isRep = true
-		rep = r.changes()
-	}
-	if isRep && len(rep.added) == 0 && len(rep.deleted) == 0 {
+	changes := state.Changes()
+	if changes.IsEmpty() {
 		return nil
 	}
 
@@ -69,15 +62,11 @@ func (m *Memory) Update(_ context.Context, user types.ChatID, state types.State)
 		return nil
 	}
 
-	if isRep {
-		for _, key := range rep.added {
-			data[key] = cpy[key]
-		}
-		for _, key := range rep.deleted {
-			delete(data, key)
-		}
-	} else {
-		m.users[user] = cpy
+	for _, key := range changes.Added {
+		data[key] = cpy[key]
+	}
+	for _, key := range changes.Removed {
+		delete(data, key)
 	}
 	return nil
 }
