@@ -82,6 +82,9 @@ func Replies(sp types.StateProvider, assets types.Assets, payments types.Payment
 		if reply.Image != nil {
 			handlers = append(handlers, newImageReply(reply.Image, assets, log))
 		}
+		if reply.Document != nil {
+			handlers = append(handlers, newDocumentReply(reply.Document, assets, log))
+		}
 		if reply.Invoice != nil {
 			handlers = append(handlers, newInvoice(reply.Invoice, payments, log))
 		}
@@ -109,11 +112,20 @@ func newDelete(logger zerolog.Logger) types.Handler {
 	return handlers.NewMessageDelete(logger)
 }
 
-func newImageReply(s *spec.ImageReply, assets types.Assets,
+func newImageReply(s *spec.FileReply, assets types.Assets,
 	log zerolog.Logger,
 ) types.Handler {
 	if s.Key != "" {
 		return handlers.NewReplyImageFile(s.Key, s.Name, assets, log)
+	}
+	return nil
+}
+
+func newDocumentReply(s *spec.FileReply, assets types.Assets,
+	log zerolog.Logger,
+) types.Handler {
+	if s.Key != "" {
+		return handlers.NewReplyDocument(s.Key, s.Name, assets, log)
 	}
 	return nil
 }

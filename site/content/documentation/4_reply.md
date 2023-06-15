@@ -217,3 +217,19 @@ Example:
         name: Test image
         key: /tmp/assets/test-image.png
 ```
+
+## Reply document
+
+Reply document works the same way as image-reply but it sends document file instead of image in chat.
+It uses absolutely the same configuration as `image` reply, but the name should be `document`.
+
+Example:
+```yaml
+- on:
+    message:
+      command: start
+  reply:
+    - document:
+        name: Test file
+        key: /tmp/assets/test-document.pdf
+```
