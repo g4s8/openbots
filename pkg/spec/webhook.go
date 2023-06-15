@@ -10,7 +10,7 @@ import (
 type Webhook struct {
 	URL    *url.URL          `yaml:"url"`
 	Method string            `yaml:"method"`
-	Body   map[string]string `yaml:"body"`
+	Data   map[string]string `yaml:"data"`
 }
 
 var ErrWebhookInvalidURL = errors.New("invalid URL")
@@ -19,7 +19,7 @@ func (ch *Webhook) UnmarshalYAML(node *yaml.Node) error {
 	var internal struct {
 		URL    string            `yaml:"url"`
 		Method string            `yaml:"method"`
-		Body   map[string]string `yaml:"body"`
+		Data   map[string]string `yaml:"data"`
 	}
 	if err := node.Decode(&internal); err != nil {
 		return errors.Wrap(err, "decode YAML")
@@ -36,8 +36,8 @@ func (ch *Webhook) UnmarshalYAML(node *yaml.Node) error {
 	if ch.Method == "" {
 		ch.Method = "GET"
 	}
-	if internal.Body != nil {
-		ch.Body = internal.Body
+	if internal.Data != nil {
+		ch.Data = internal.Data
 	}
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
@@ -19,25 +20,34 @@ import (
 var _ types.Handler = (*Webhook)(nil)
 
 type Webhook struct {
-	url     *url.URL
-	method  string
-	payload map[string]string
-	sp      types.StateProvider
-	log     zerolog.Logger
+	url    *url.URL
+	method string
+	data   map[string]string
+	sp     types.StateProvider
+	log    zerolog.Logger
 
 	cli *http.Client
 }
 
-func NewWebhook(url *url.URL, method string, payload map[string]string, sp types.StateProvider,
-	log zerolog.Logger) *Webhook {
+func NewWebhook(url *url.URL, method string, data map[string]string, sp types.StateProvider,
+	log zerolog.Logger,
+) *Webhook {
 	return &Webhook{
-		url:     url,
-		method:  method,
-		payload: payload,
-		sp:      sp,
-		cli:     http.DefaultClient,
-		log:     log.With().Str("handler", "webhook").Logger(),
+		url:    url,
+		method: method,
+		data:   data,
+		sp:     sp,
+		cli:    http.DefaultClient,
+		log:    log.With().Str("handler", "webhook").Logger(),
 	}
+}
+
+type WebhookPayload struct {
+	Data map[string]string `json:"data"`
+	Meta struct {
+		ChatID    int64     `json:"chat_id"`
+		Timestamp time.Time `json:"timestamp"`
+	} `json:"meta"`
 }
 
 func (h *Webhook) Handle(ctx context.Context, upd *telegram.Update, _ *telegram.BotAPI) error {
@@ -47,11 +57,17 @@ func (h *Webhook) Handle(ctx context.Context, upd *telegram.Update, _ *telegram.
 		return errors.Wrap(err, "load state")
 	}
 	interpolator := newInterpolator(state, upd)
-	values := make(map[string]string, len(h.payload))
-	for k, v := range h.payload {
+	values := make(map[string]string, len(h.data))
+	for k, v := range h.data {
 		values[k] = interpolator.interpolate(v)
 	}
-	body, err := json.Marshal(values)
+	payload := WebhookPayload{
+		Data: values,
+	}
+	payload.Meta.ChatID = ChatID(upd).Int64()
+	payload.Meta.Timestamp = time.Now().UTC()
+
+	body, err := json.Marshal(&payload)
 	if err != nil {
 		return errors.Wrap(err, "marshal payload")
 	}
@@ -61,6 +77,7 @@ func (h *Webhook) Handle(ctx context.Context, upd *telegram.Update, _ *telegram.
 	if err != nil {
 		return errors.Wrap(err, "make HTTP request")
 	}
+	req.Header.Add("Content-Type", "application/json")
 	resp, err := h.cli.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "call HTTP")

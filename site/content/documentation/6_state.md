@@ -28,9 +28,9 @@ on:
 reply:
   - message:
       text: "Welcome!"
-  - state:
-      set:
-        name: John
+state:
+  set:
+    name: John
 ```
 Now `name` key in state was changed to `John` value.
 

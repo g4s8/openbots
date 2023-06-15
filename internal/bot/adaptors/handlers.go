@@ -62,7 +62,8 @@ func (h *multiHandler) Handle(ctx context.Context, upd *telegram.Update, bot *te
 }
 
 func Replies(sp types.StateProvider, assets types.Assets, payments types.PaymentProviders,
-	r []*spec.Reply, log zerolog.Logger) types.Handler {
+	r []*spec.Reply, log zerolog.Logger,
+) types.Handler {
 	var handlers []types.Handler
 	for _, reply := range r {
 		if reply.Message != nil {
@@ -92,7 +93,7 @@ func Replies(sp types.StateProvider, assets types.Assets, payments types.Payment
 }
 
 func Webhook(s *spec.Webhook, sp types.StateProvider, log zerolog.Logger) types.Handler {
-	return handlers.NewWebhook(s.URL, s.Method, s.Body, sp, log)
+	return handlers.NewWebhook(s.URL, s.Method, s.Data, sp, log)
 }
 
 func newEdit(s *spec.Edit, sp types.StateProvider, log zerolog.Logger) types.Handler {
@@ -109,7 +110,8 @@ func newDelete(logger zerolog.Logger) types.Handler {
 }
 
 func newImageReply(s *spec.ImageReply, assets types.Assets,
-	log zerolog.Logger) types.Handler {
+	log zerolog.Logger,
+) types.Handler {
 	if s.Key != "" {
 		return handlers.NewReplyImageFile(s.Key, s.Name, assets, log)
 	}

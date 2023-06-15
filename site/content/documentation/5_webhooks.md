@@ -23,21 +23,27 @@ on:
 reply:
   - callback:
       text: Thank you!
-  - webhook:
-      url: "https://you-site/terms"
-      method: POST
-      body:
-        test: "Hello"
-        message: "${message.text}"
-        state: "${state.foo}"
+webhook:
+  url: "https://you-site/terms"
+  method: POST
+  data:
+    test: "Hello"
+    message: "${message.text}"
+    state: "${state.foo}"
 ```
 This webhook send JSON with static `test` field, and dynamic
 `message` and `state` fields: `message` field contains message text value,
 and `state` field loads `foo` key from state:
 ```json
 {
-  "test": "Hello",
-  "message": "User input",
-  "state": "one"
+  "data": {
+    "test": "Hello",
+    "message": "User input",
+    "state": "one"
+  },
+  "meta": {
+    chat_id: 1234,
+    timestamp: "01-01-2023T01:02:03.000Z"
+  }
 }
 ```

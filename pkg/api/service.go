@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var rePath = regexp.MustCompile(`^/handlers/([a-zA-Z0-9]+)$`)
+var rePath = regexp.MustCompile(`^/handlers/([a-zA-Z0-9-]+)$`)
 
 type Service struct {
 	cfg      Config
