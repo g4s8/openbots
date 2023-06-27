@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	goerr "errors"
+
 	"github.com/g4s8/openbots/internal/bot/adaptors"
 	"github.com/g4s8/openbots/internal/bot/handlers"
 	"github.com/g4s8/openbots/pkg/api"
@@ -54,7 +56,8 @@ type Bot struct {
 func New(botAPI *telegram.BotAPI, state types.StateProvider,
 	context types.ContextProvider, assets types.Assets,
 	paymentProviders types.PaymentProviders,
-	apiAddr string, log zerolog.Logger) *Bot {
+	apiAddr string, log zerolog.Logger,
+) *Bot {
 	return &Bot{
 		handlers:    make([]*eventHandler, 0),
 		apiHandlers: make(map[string][]api.Handler),
@@ -313,15 +316,25 @@ func (b *Bot) Stop() error {
 	return nil
 }
 
+// HandleUpdate handles telegram update and log error if any.
+// Deprecated: use HandleUpdateErr instead, in next major release HandlerUpdateErr will be renamed to HandleUpdate.
 func (b *Bot) HandleUpdate(ctx context.Context, upd *telegram.Update) {
+	if err := b.HandleUpdateErr(ctx, upd); err != nil {
+		b.log.Error().Err(err).Msg("Handle update")
+	}
+}
+
+// HandleUpdateErr handles telegram update and returns error if any.
+func (b *Bot) HandleUpdateErr(ctx context.Context, upd *telegram.Update) error {
 	chatID := handlers.ChatID(upd)
 	log := b.log.With().Str("chat-id", chatID.String()).Logger()
 	log.Debug().Msg("Handling update")
 
+	var errs []error
 	handlers := make([]types.Handler, 0)
 	for _, h := range b.handlers {
 		if check, err := h.Check(ctx, upd); err != nil {
-			log.Printf("Filter error: %v", err)
+			errs = append(errs, errors.Wrap(err, "filter check"))
 			continue
 		} else if check {
 			handlers = append(handlers, h)
@@ -331,9 +344,10 @@ func (b *Bot) HandleUpdate(ctx context.Context, upd *telegram.Update) {
 	for i, h := range handlers {
 		log.Debug().Int("handler", i).Msg("Handling")
 		if err := h.Handle(ctx, upd, b.botAPI); err != nil {
-			log.Error().Err(err).Msg("Handler failed")
+			errs = append(errs, errors.Wrap(err, "handler"))
 			continue
 		}
 	}
 	log.Debug().Msg("Update handled")
+	return goerr.Join(errs...)
 }
