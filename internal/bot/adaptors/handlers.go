@@ -12,7 +12,7 @@ import (
 	"go.uber.org/multierr"
 )
 
-func MessageRepply(sp types.StateProvider, s *spec.MessageReply, log zerolog.Logger) *handlers.MessageReply {
+func MessageRepply(sp types.StateProvider, secrets types.Secrets, s *spec.MessageReply, log zerolog.Logger) *handlers.MessageReply {
 	var modifiers []handlers.MessageModifier
 	if s.Markup != nil && len(s.Markup.Keyboard) > 0 {
 		modifiers = append(modifiers, handlers.MessageWithKeyboard(s.Markup.Keyboard))
@@ -24,7 +24,7 @@ func MessageRepply(sp types.StateProvider, s *spec.MessageReply, log zerolog.Log
 	if s.ParseMode != "" {
 		modifiers = append(modifiers, handlers.MessageWithParseMode(string(s.ParseMode)))
 	}
-	return handlers.NewMessageReply(sp, s.Text, log, modifiers...)
+	return handlers.NewMessageReply(sp, secrets, s.Text, log, modifiers...)
 }
 
 func CallbackReply(s *spec.CallbackReply) *handlers.CallbackReply {
@@ -61,20 +61,20 @@ func (h *multiHandler) Handle(ctx context.Context, upd *telegram.Update, bot *te
 	return nil
 }
 
-func Replies(sp types.StateProvider, assets types.Assets, payments types.PaymentProviders,
+func Replies(sp types.StateProvider, secrets types.Secrets, assets types.Assets, payments types.PaymentProviders,
 	r []*spec.Reply, log zerolog.Logger,
 ) types.Handler {
 	var handlers []types.Handler
 	for _, reply := range r {
 		if reply.Message != nil {
 			handlers = append(handlers,
-				MessageRepply(sp, reply.Message, log))
+				MessageRepply(sp, secrets, reply.Message, log))
 		}
 		if reply.Callback != nil {
 			handlers = append(handlers, CallbackReply(reply.Callback))
 		}
 		if reply.Edit != nil {
-			handlers = append(handlers, newEdit(reply.Edit, sp, log))
+			handlers = append(handlers, newEdit(reply.Edit, sp, secrets, log))
 		}
 		if reply.Delete {
 			handlers = append(handlers, newDelete(log))
@@ -95,17 +95,17 @@ func Replies(sp types.StateProvider, assets types.Assets, payments types.Payment
 	return &multiHandler{handlers}
 }
 
-func Webhook(s *spec.Webhook, sp types.StateProvider, log zerolog.Logger) types.Handler {
-	return handlers.NewWebhook(s.URL, s.Method, s.Data, sp, log)
+func Webhook(s *spec.Webhook, sp types.StateProvider, secrets types.Secrets, log zerolog.Logger) types.Handler {
+	return handlers.NewWebhook(s.URL, s.Method, s.Data, sp, secrets, log)
 }
 
-func newEdit(s *spec.Edit, sp types.StateProvider, log zerolog.Logger) types.Handler {
+func newEdit(s *spec.Edit, sp types.StateProvider, secrets types.Secrets, log zerolog.Logger) types.Handler {
 	if s.Message == nil {
 		log.Fatal().Msg("Invalid edit spec: message is empty")
 	}
 	msg := s.Message
 	return handlers.NewMessageEdit(msg.Caption, msg.Text, inlineKeyboardFromSpec(msg.InlineKeyboard),
-		sp, log)
+		sp, secrets, log)
 }
 
 func newDelete(logger zerolog.Logger) types.Handler {

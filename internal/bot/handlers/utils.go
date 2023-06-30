@@ -29,13 +29,17 @@ func rawChatID(upd *telegram.Update) int64 {
 }
 
 type interpolator struct {
-	state types.State
+	state   types.State
+	secrets map[string]types.Secret
 
 	message *telegram.Message
 }
 
-func newInterpolator(state types.State, upd *telegram.Update) *interpolator {
-	res := &interpolator{state: state}
+func newInterpolator(state types.State, secrets map[string]types.Secret, upd *telegram.Update) *interpolator {
+	res := &interpolator{
+		state:   state,
+		secrets: secrets,
+	}
 	if upd.Message != nil {
 		res.message = upd.Message
 	}
@@ -56,6 +60,12 @@ func (i *interpolator) expander() func(string) string {
 		}
 		if strings.HasPrefix(text, "message.") {
 			return message[text[8:]]
+		}
+		if strings.HasPrefix(text, "secret.") {
+			secret, ok := i.secrets[text[7:]]
+			if ok {
+				return secret.Value()
+			}
 		}
 		return ""
 	}

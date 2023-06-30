@@ -20,25 +20,27 @@ import (
 var _ types.Handler = (*Webhook)(nil)
 
 type Webhook struct {
-	url    *url.URL
-	method string
-	data   map[string]string
-	sp     types.StateProvider
-	log    zerolog.Logger
+	url     *url.URL
+	method  string
+	data    map[string]string
+	sp      types.StateProvider
+	secrets types.Secrets
+	log     zerolog.Logger
 
 	cli *http.Client
 }
 
 func NewWebhook(url *url.URL, method string, data map[string]string, sp types.StateProvider,
-	log zerolog.Logger,
+	secrets types.Secrets, log zerolog.Logger,
 ) *Webhook {
 	return &Webhook{
-		url:    url,
-		method: method,
-		data:   data,
-		sp:     sp,
-		cli:    http.DefaultClient,
-		log:    log.With().Str("handler", "webhook").Logger(),
+		url:     url,
+		method:  method,
+		data:    data,
+		sp:      sp,
+		secrets: secrets,
+		cli:     http.DefaultClient,
+		log:     log.With().Str("handler", "webhook").Logger(),
 	}
 }
 
@@ -56,7 +58,11 @@ func (h *Webhook) Handle(ctx context.Context, upd *telegram.Update, _ *telegram.
 	if err != nil {
 		return errors.Wrap(err, "load state")
 	}
-	interpolator := newInterpolator(state, upd)
+	secretMap, err := h.secrets.Get(ctx)
+	if err != nil {
+		return errors.Wrap(err, "get secrets")
+	}
+	interpolator := newInterpolator(state, secretMap, upd)
 	values := make(map[string]string, len(h.data))
 	for k, v := range h.data {
 		values[k] = interpolator.interpolate(v)

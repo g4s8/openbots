@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 
+	"github.com/g4s8/openbots/pkg/secrets"
 	"github.com/g4s8/openbots/pkg/spec"
 	"github.com/g4s8/openbots/pkg/state"
 	"github.com/g4s8/openbots/pkg/types"
@@ -13,6 +14,7 @@ import (
 
 type StateHandler struct {
 	provider types.StateProvider
+	secrets  types.Secrets
 	ops      []types.StateOp
 	log      zerolog.Logger
 }
@@ -23,7 +25,11 @@ func (h *StateHandler) Handle(ctx context.Context, update *telegram.Update, _ *t
 	if err := h.provider.Load(ctx, uid, state); err != nil {
 		return errors.Wrap(err, "load state")
 	}
-	interpolator := newInterpolator(state, update)
+	secretMap, err := h.secrets.Get(ctx)
+	if err != nil {
+		return errors.Wrap(err, "get secrets")
+	}
+	interpolator := newInterpolator(state, secretMap, update)
 	for _, op := range h.ops {
 		op.Apply(state, interpolator.interpolate)
 	}
@@ -66,6 +72,7 @@ func NewStateHandlerFromSpec(provider types.StateProvider, spec *spec.State, log
 	}
 	return &StateHandler{
 		provider: provider,
+		secrets:  secrets.Stub,
 		ops:      ops,
 		log:      log.With().Str("handler", "state").Logger(),
 	}

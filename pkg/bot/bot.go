@@ -18,6 +18,7 @@ import (
 	ctx "github.com/g4s8/openbots/pkg/context"
 	logwrap "github.com/g4s8/openbots/pkg/log"
 	"github.com/g4s8/openbots/pkg/payments"
+	"github.com/g4s8/openbots/pkg/secrets"
 	"github.com/g4s8/openbots/pkg/spec"
 	"github.com/g4s8/openbots/pkg/state"
 	"github.com/g4s8/openbots/pkg/types"
@@ -44,6 +45,7 @@ type Bot struct {
 	state      types.StateProvider
 	assets     types.Assets
 	payments   types.PaymentProviders
+	secrets    types.Secrets
 	botAPI     *telegram.BotAPI
 	apiService *api.Service
 	stopOnce   sync.Once
@@ -55,7 +57,7 @@ type Bot struct {
 
 func New(botAPI *telegram.BotAPI, state types.StateProvider,
 	context types.ContextProvider, assets types.Assets,
-	paymentProviders types.PaymentProviders,
+	paymentProviders types.PaymentProviders, secrets types.Secrets,
 	apiAddr string, log zerolog.Logger,
 ) *Bot {
 	return &Bot{
@@ -66,6 +68,7 @@ func New(botAPI *telegram.BotAPI, state types.StateProvider,
 		state:       state,
 		assets:      assets,
 		payments:    paymentProviders,
+		secrets:     secrets,
 		botAPI:      botAPI,
 		quitCh:      make(chan struct{}, 1),
 		doneCh:      make(chan struct{}, 1),
@@ -163,7 +166,7 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 	sp = logwrap.WrapStateProvider(sp, log)
 	cp = logwrap.WrapContextProvider(cp, log)
 
-	bot := New(botAPI, sp, cp, ap, paymentProviders, apiAddr, log)
+	bot := New(botAPI, sp, cp, ap, paymentProviders, secrets.Stub, apiAddr, log)
 
 	if err := bot.SetupHandlersFromSpec(s.Handlers); err != nil {
 		return nil, errors.Wrap(err, "setup handlers")
@@ -210,7 +213,7 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 		}
 
 		if h.Replies != nil {
-			hs = append(hs, adaptors.Replies(b.state, b.assets, b.payments, h.Replies, b.log))
+			hs = append(hs, adaptors.Replies(b.state, b.secrets, b.assets, b.payments, h.Replies, b.log))
 		}
 		if h.State != nil {
 			hs = append(hs, handlers.NewStateHandlerFromSpec(b.state, h.State, b.log))
@@ -224,7 +227,7 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 			}
 		}
 		if h.Webhook != nil {
-			hs = append(hs, adaptors.Webhook(h.Webhook, b.state, b.log))
+			hs = append(hs, adaptors.Webhook(h.Webhook, b.state, b.secrets, b.log))
 		}
 
 		if filter == nil {

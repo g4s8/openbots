@@ -28,16 +28,19 @@ type MessageEdit struct {
 	text     string
 	keyboard InlineKeyboard
 	sp       types.StateProvider
+	secrets  types.Secrets
 	logger   zerolog.Logger
 }
 
 func NewMessageEdit(caption string, text string, keyboard InlineKeyboard,
-	sp types.StateProvider, logger zerolog.Logger) *MessageEdit {
+	sp types.StateProvider, secrets types.Secrets, logger zerolog.Logger,
+) *MessageEdit {
 	return &MessageEdit{
 		caption:  caption,
 		text:     text,
 		keyboard: keyboard,
 		sp:       sp,
+		secrets:  secrets,
 		logger:   logger.With().Str("handler", "message_edit").Logger(),
 	}
 }
@@ -68,7 +71,11 @@ func (h *MessageEdit) Handle(ctx context.Context, upd *telegram.Update, api *tel
 	if err := h.sp.Load(ctx, chatID, state); err != nil {
 		return errors.Wrap(err, "load user state")
 	}
-	text := newInterpolator(state, upd).interpolate(h.text)
+	secretMap, err := h.secrets.Get(ctx)
+	if err != nil {
+		return errors.Wrap(err, "get secrets")
+	}
+	text := newInterpolator(state, secretMap, upd).interpolate(h.text)
 
 	h.logger.Debug().
 		Int("message_id", msgID).

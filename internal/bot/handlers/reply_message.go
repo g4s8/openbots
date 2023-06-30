@@ -20,15 +20,19 @@ var _ types.Handler = (*MessageReply)(nil)
 // MessageReply handler processes telegram updates and reply message to them.
 type MessageReply struct {
 	sp        types.StateProvider
+	secrets   types.Secrets
 	text      string
 	modifiers []MessageModifier
 	logger    zerolog.Logger
 }
 
 // NewMessageReply from repliers funcs.
-func NewMessageReply(sp types.StateProvider, text string, logger zerolog.Logger, modifiers ...MessageModifier) *MessageReply {
+func NewMessageReply(sp types.StateProvider, secrets types.Secrets,
+	text string, logger zerolog.Logger, modifiers ...MessageModifier,
+) *MessageReply {
 	return &MessageReply{
 		sp:        sp,
+		secrets:   secrets,
 		text:      text,
 		modifiers: modifiers,
 		logger:    logger.With().Str("handler", "reply_message").Logger(),
@@ -36,7 +40,8 @@ func NewMessageReply(sp types.StateProvider, text string, logger zerolog.Logger,
 }
 
 func (h *MessageReply) Handle(ctx context.Context, upd *telegram.Update,
-	bot *telegram.BotAPI) error {
+	bot *telegram.BotAPI,
+) error {
 	state := state.NewUserState()
 	defer state.Close()
 
@@ -44,8 +49,12 @@ func (h *MessageReply) Handle(ctx context.Context, upd *telegram.Update,
 	if err := h.sp.Load(ctx, chatID, state); err != nil {
 		return errors.Wrap(err, "load state")
 	}
+	secretMap, err := h.secrets.Get(ctx)
+	if err != nil {
+		return errors.Wrap(err, "get secrets")
+	}
 
-	intp := newInterpolator(state, upd)
+	intp := newInterpolator(state, secretMap, upd)
 	processed := intp.interpolate(h.text)
 
 	msg := telegram.NewMessage(int64(chatID), processed)
