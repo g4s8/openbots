@@ -12,7 +12,7 @@ import (
 	"go.uber.org/multierr"
 )
 
-func MessageRepply(sp types.StateProvider, secrets types.Secrets, s *spec.MessageReply, log zerolog.Logger) *handlers.MessageReply {
+func MessageRepply(sp types.StateProvider, secrets types.Secrets, s *spec.MessageReply, log zerolog.Logger) (*handlers.MessageReply, error) {
 	var modifiers []handlers.MessageModifier
 	if s.Markup != nil && len(s.Markup.Keyboard) > 0 {
 		modifiers = append(modifiers, handlers.MessageWithKeyboard(s.Markup.Keyboard))
@@ -24,7 +24,22 @@ func MessageRepply(sp types.StateProvider, secrets types.Secrets, s *spec.Messag
 	if s.ParseMode != "" {
 		modifiers = append(modifiers, handlers.MessageWithParseMode(string(s.ParseMode)))
 	}
-	return handlers.NewMessageReply(sp, secrets, s.Text, log, modifiers...)
+	var templater handlers.Templater
+	switch s.Template {
+	case spec.TemplateDefault:
+		templater = handlers.NewDefaultTemplate
+	case spec.TemplateGo:
+		templater = handlers.NewGoTemplate
+	case spec.TemplateNo:
+		templater = handlers.NewNoTemplate
+	default:
+		templater = handlers.NewDefaultTemplate
+	}
+	tpl, err := templater(s.Text)
+	if err != nil {
+		return nil, errors.Wrap(err, "create template")
+	}
+	return handlers.NewMessageReply(sp, secrets, tpl, log, modifiers...), nil
 }
 
 func CallbackReply(s *spec.CallbackReply) *handlers.CallbackReply {
@@ -63,18 +78,25 @@ func (h *multiHandler) Handle(ctx context.Context, upd *telegram.Update, bot *te
 
 func Replies(sp types.StateProvider, secrets types.Secrets, assets types.Assets, payments types.PaymentProviders,
 	r []*spec.Reply, log zerolog.Logger,
-) types.Handler {
+) (types.Handler, error) {
 	var handlers []types.Handler
 	for _, reply := range r {
 		if reply.Message != nil {
-			handlers = append(handlers,
-				MessageRepply(sp, secrets, reply.Message, log))
+			h, err := MessageRepply(sp, secrets, reply.Message, log)
+			if err != nil {
+				return nil, errors.Wrap(err, "create message reply handler")
+			}
+			handlers = append(handlers, h)
 		}
 		if reply.Callback != nil {
 			handlers = append(handlers, CallbackReply(reply.Callback))
 		}
 		if reply.Edit != nil {
-			handlers = append(handlers, newEdit(reply.Edit, sp, secrets, log))
+			h, err := newEdit(reply.Edit, sp, secrets, log)
+			if err != nil {
+				return nil, errors.Wrap(err, "create edit handler")
+			}
+			handlers = append(handlers, h)
 		}
 		if reply.Delete {
 			handlers = append(handlers, newDelete(log))
@@ -92,20 +114,36 @@ func Replies(sp types.StateProvider, secrets types.Secrets, assets types.Assets,
 			handlers = append(handlers, newPreCheckoutAnswer(reply.PreCheckout, log))
 		}
 	}
-	return &multiHandler{handlers}
+	return &multiHandler{handlers}, nil
 }
 
 func Webhook(s *spec.Webhook, sp types.StateProvider, secrets types.Secrets, log zerolog.Logger) types.Handler {
 	return handlers.NewWebhook(s.URL, s.Method, s.Data, sp, secrets, log)
 }
 
-func newEdit(s *spec.Edit, sp types.StateProvider, secrets types.Secrets, log zerolog.Logger) types.Handler {
+func newEdit(s *spec.Edit, sp types.StateProvider, secrets types.Secrets, log zerolog.Logger) (types.Handler, error) {
 	if s.Message == nil {
 		log.Fatal().Msg("Invalid edit spec: message is empty")
 	}
 	msg := s.Message
-	return handlers.NewMessageEdit(msg.Caption, msg.Text, inlineKeyboardFromSpec(msg.InlineKeyboard),
-		sp, secrets, log)
+
+	var templater handlers.Templater
+	switch msg.Template {
+	case spec.TemplateDefault:
+		templater = handlers.NewDefaultTemplate
+	case spec.TemplateGo:
+		templater = handlers.NewGoTemplate
+	case spec.TemplateNo:
+		templater = handlers.NewNoTemplate
+	default:
+		templater = handlers.NewDefaultTemplate
+	}
+	tpl, err := templater(msg.Text)
+	if err != nil {
+		return nil, errors.Wrap(err, "create template")
+	}
+	return handlers.NewMessageEdit(msg.Caption, tpl, inlineKeyboardFromSpec(msg.InlineKeyboard),
+		sp, secrets, log), nil
 }
 
 func newDelete(logger zerolog.Logger) types.Handler {

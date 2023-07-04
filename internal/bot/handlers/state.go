@@ -29,8 +29,8 @@ func (h *StateHandler) Handle(ctx context.Context, update *telegram.Update, _ *t
 	if err != nil {
 		return errors.Wrap(err, "get secrets")
 	}
-	interpolator := newInterpolator(state, secretMap, update)
 	for _, op := range h.ops {
+		interpolator := newInterpolator(state.Map(), secretMap, update)
 		op.Apply(state, interpolator.interpolate)
 	}
 	if err := h.provider.Update(ctx, uid, state); err != nil {

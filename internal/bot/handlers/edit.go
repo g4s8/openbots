@@ -25,19 +25,19 @@ var ErrNoCallbackMessage = errors.New("callback data doesn't have message id")
 
 type MessageEdit struct {
 	caption  string
-	text     string
+	template Template
 	keyboard InlineKeyboard
 	sp       types.StateProvider
 	secrets  types.Secrets
 	logger   zerolog.Logger
 }
 
-func NewMessageEdit(caption string, text string, keyboard InlineKeyboard,
+func NewMessageEdit(caption string, template Template, keyboard InlineKeyboard,
 	sp types.StateProvider, secrets types.Secrets, logger zerolog.Logger,
 ) *MessageEdit {
 	return &MessageEdit{
 		caption:  caption,
-		text:     text,
+		template: template,
 		keyboard: keyboard,
 		sp:       sp,
 		secrets:  secrets,
@@ -45,12 +45,12 @@ func NewMessageEdit(caption string, text string, keyboard InlineKeyboard,
 	}
 }
 
-func (h *MessageEdit) mode() editMessageMode {
+func (h *MessageEdit) mode(text string) editMessageMode {
 	if h.caption != "" {
 		return editMessageCaptionMode
 	}
 	var res editMessageMode
-	if h.text != "" {
+	if text != "" {
 		res |= editMessageTextMode
 	}
 	if len(h.keyboard) > 0 {
@@ -75,17 +75,21 @@ func (h *MessageEdit) Handle(ctx context.Context, upd *telegram.Update, api *tel
 	if err != nil {
 		return errors.Wrap(err, "get secrets")
 	}
-	text := newInterpolator(state, secretMap, upd).interpolate(h.text)
+	templateCtx := newTemplateContext(upd, state, secretMap, nil)
+	text, err := h.template.Format(templateCtx)
+	if err != nil {
+		return errors.Wrap(err, "format template")
+	}
 
 	h.logger.Debug().
 		Int("message_id", msgID).
 		Int64("chat_id", int64(chatID)).
 		Str("text", text).
-		Str("origin_text", h.text).
+		Str("origin_text", text).
 		Msg("Edit message")
 
 	var msg telegram.Chattable
-	switch h.mode() {
+	switch mode := h.mode(text); mode {
 	case editMessageCaptionMode:
 		msg = telegram.NewEditMessageCaption(int64(chatID), msgID, h.caption)
 	case editMessageTextMode:
@@ -95,7 +99,7 @@ func (h *MessageEdit) Handle(ctx context.Context, upd *telegram.Update, api *tel
 	case editMessageTextKeyboardMode | editMessageTextMode:
 		msg = telegram.NewEditMessageTextAndMarkup(int64(chatID), msgID, text, h.keyboard.telegramMarkup())
 	default:
-		return fmt.Errorf("unsupported edit message mode: %d", h.mode())
+		return fmt.Errorf("unsupported edit message mode: %d", mode)
 	}
 
 	if _, err := api.Send(msg); err != nil {

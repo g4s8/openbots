@@ -29,13 +29,13 @@ func rawChatID(upd *telegram.Update) int64 {
 }
 
 type interpolator struct {
-	state   types.State
+	state   map[string]string
 	secrets map[string]types.Secret
 
 	message *telegram.Message
 }
 
-func newInterpolator(state types.State, secrets map[string]types.Secret, upd *telegram.Update) *interpolator {
+func newInterpolator(state map[string]string, secrets map[string]types.Secret, upd *telegram.Update) *interpolator {
 	res := &interpolator{
 		state:   state,
 		secrets: secrets,
@@ -54,9 +54,8 @@ func (i *interpolator) expander() func(string) string {
 		message["from.id"] = strconv.FormatInt(i.message.From.ID, 10)
 	}
 	return func(text string) string {
-		state := i.state.Map()
 		if strings.HasPrefix(text, "state.") {
-			return state[text[6:]]
+			return i.state[text[6:]]
 		}
 		if strings.HasPrefix(text, "message.") {
 			return message[text[8:]]

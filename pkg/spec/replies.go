@@ -60,10 +60,31 @@ const (
 	ModeHTML       = ParseMode("HTML")
 )
 
+// TemplateStyle of message text.
+type TemplateStyle string
+
+func (ts TemplateStyle) validate() []error {
+	switch ts {
+	case TemplateDefault, TemplateGo, TemplateNo:
+		return nil
+	}
+	return []error{fmt.Errorf("invalid template style %s", ts)}
+}
+
+const (
+	// TemplateDefault is default template style, uses interpolation of state variables.
+	TemplateDefault = TemplateStyle("default")
+	// TemplateGo uses go template engine.
+	TemplateGo = TemplateStyle("go")
+	// TemplateNo uses no template engine.
+	TemplateNo = TemplateStyle("no")
+)
+
 type MessageReply struct {
-	Text      string       `yaml:"text"`
-	ParseMode ParseMode    `yaml:"parseMode"`
-	Markup    *ReplyMarkup `yaml:"markup"`
+	Text      string        `yaml:"text"`
+	ParseMode ParseMode     `yaml:"parseMode"`
+	Markup    *ReplyMarkup  `yaml:"markup"`
+	Template  TemplateStyle `yaml:"template"`
 }
 
 func (r *MessageReply) validate() []error {
@@ -77,6 +98,11 @@ func (r *MessageReply) validate() []error {
 	if r.ParseMode != "" {
 		errs = append(errs, ParseMode(r.ParseMode).validate()...)
 	}
+	if r.Template == "" {
+		r.Template = TemplateDefault
+	}
+	errs = append(errs, r.Template.validate()...)
+
 	return errs
 }
 

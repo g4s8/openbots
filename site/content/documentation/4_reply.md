@@ -20,6 +20,10 @@ It contains these elements:
  `Markdown`, `MarkdownV2` or `HTML`.
  - Reply markup as `markup` - specify Telegram markup changes on
  user's chat.
+ - Template style as `template` - could be `default`, `go` and `no`:
+ Default template style interpolates local fields from `${state.key}`
+ expressions, `go` style uses Go template engine, and `no` ignore templates
+ and return text as is. If not set, the `default` style will be used.
 
 ### Parse mode
 

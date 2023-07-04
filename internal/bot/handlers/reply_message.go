@@ -21,19 +21,19 @@ var _ types.Handler = (*MessageReply)(nil)
 type MessageReply struct {
 	sp        types.StateProvider
 	secrets   types.Secrets
-	text      string
+	template  Template
 	modifiers []MessageModifier
 	logger    zerolog.Logger
 }
 
 // NewMessageReply from repliers funcs.
 func NewMessageReply(sp types.StateProvider, secrets types.Secrets,
-	text string, logger zerolog.Logger, modifiers ...MessageModifier,
+	template Template, logger zerolog.Logger, modifiers ...MessageModifier,
 ) *MessageReply {
 	return &MessageReply{
 		sp:        sp,
 		secrets:   secrets,
-		text:      text,
+		template:  template,
 		modifiers: modifiers,
 		logger:    logger.With().Str("handler", "reply_message").Logger(),
 	}
@@ -54,10 +54,12 @@ func (h *MessageReply) Handle(ctx context.Context, upd *telegram.Update,
 		return errors.Wrap(err, "get secrets")
 	}
 
-	intp := newInterpolator(state, secretMap, upd)
-	processed := intp.interpolate(h.text)
+	response, err := h.template.Format(newTemplateContext(upd, state, secretMap, nil))
+	if err != nil {
+		return errors.Wrap(err, "format template")
+	}
 
-	msg := telegram.NewMessage(int64(chatID), processed)
+	msg := telegram.NewMessage(int64(chatID), response)
 	for _, modifier := range h.modifiers {
 		modifier(&msg)
 	}

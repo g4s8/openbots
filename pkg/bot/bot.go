@@ -213,7 +213,11 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 		}
 
 		if h.Replies != nil {
-			hs = append(hs, adaptors.Replies(b.state, b.secrets, b.assets, b.payments, h.Replies, b.log))
+			h, err := adaptors.Replies(b.state, b.secrets, b.assets, b.payments, h.Replies, b.log)
+			if err != nil {
+				return errors.Wrap(err, "create replies handler")
+			}
+			hs = append(hs, h)
 		}
 		if h.State != nil {
 			hs = append(hs, handlers.NewStateHandlerFromSpec(b.state, h.State, b.log))
