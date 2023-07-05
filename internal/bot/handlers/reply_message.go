@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 
+	"github.com/g4s8/openbots/internal/bot/data"
 	"github.com/g4s8/openbots/pkg/state"
 	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -53,8 +54,9 @@ func (h *MessageReply) Handle(ctx context.Context, upd *telegram.Update,
 	if err != nil {
 		return errors.Wrap(err, "get secrets")
 	}
+	data := data.FromCtx(ctx)
 
-	response, err := h.template.Format(newTemplateContext(upd, state, secretMap, nil))
+	response, err := h.template.Format(newTemplateContext(upd, state, secretMap, data.Get()))
 	if err != nil {
 		return errors.Wrap(err, "format template")
 	}

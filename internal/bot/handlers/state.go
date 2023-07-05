@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 
+	"github.com/g4s8/openbots/internal/bot/interpolator"
 	"github.com/g4s8/openbots/pkg/secrets"
 	"github.com/g4s8/openbots/pkg/spec"
 	"github.com/g4s8/openbots/pkg/state"
@@ -30,8 +31,8 @@ func (h *StateHandler) Handle(ctx context.Context, update *telegram.Update, _ *t
 		return errors.Wrap(err, "get secrets")
 	}
 	for _, op := range h.ops {
-		interpolator := newInterpolator(state.Map(), secretMap, update)
-		op.Apply(state, interpolator.interpolate)
+		interpolator := interpolator.New(state.Map(), secretMap, update)
+		op.Apply(state, interpolator.Interpolate)
 	}
 	if err := h.provider.Update(ctx, uid, state); err != nil {
 		return errors.Wrap(err, "update state")

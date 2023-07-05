@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
+	"github.com/g4s8/openbots/internal/bot/interpolator"
 	"github.com/g4s8/openbots/pkg/state"
 	"github.com/g4s8/openbots/pkg/types"
 )
@@ -62,10 +63,10 @@ func (h *Webhook) Handle(ctx context.Context, upd *telegram.Update, _ *telegram.
 	if err != nil {
 		return errors.Wrap(err, "get secrets")
 	}
-	interpolator := newInterpolator(state.Map(), secretMap, upd)
+	interpolator := interpolator.New(state.Map(), secretMap, upd)
 	values := make(map[string]string, len(h.data))
 	for k, v := range h.data {
-		values[k] = interpolator.interpolate(v)
+		values[k] = interpolator.Interpolate(v)
 	}
 	payload := WebhookPayload{
 		Data: values,

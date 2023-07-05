@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"text/template"
 
+	"github.com/g4s8/openbots/internal/bot/interpolator"
 	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
@@ -61,8 +62,8 @@ func (t *defaultTemplate) Format(ctx *templateContext) (string, error) {
 	for k, v := range ctx.Secrets {
 		secrets[k] = types.Secret(v)
 	}
-	intp := newInterpolator(ctx.State, secrets, ctx.Update)
-	processed := intp.interpolate(t.src)
+	intp := interpolator.New(ctx.State, secrets, ctx.Update)
+	processed := intp.Interpolate(t.src)
 	return processed, nil
 }
 

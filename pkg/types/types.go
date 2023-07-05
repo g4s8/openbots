@@ -29,6 +29,22 @@ type EventFilter interface {
 	Check(context.Context, *telegram.Update) (bool, error)
 }
 
+type DataContainer struct {
+	data any
+}
+
+func (c *DataContainer) Set(data any) {
+	c.data = data
+}
+
+func (c *DataContainer) Get() any {
+	return c.data
+}
+
+type DataLoader interface {
+	Load(ctx context.Context, c *DataContainer, upd *telegram.Update) error
+}
+
 // Bot instance.
 type Bot interface {
 	// Handle register bot's handler with filter.

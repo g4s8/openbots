@@ -30,6 +30,7 @@ type Handler struct {
 	Webhook *Webhook `yaml:"webhook"`
 	State   *State   `yaml:"state"`
 	Context *Context `yaml:"context"`
+	Data    *Data    `yaml:"data"`
 }
 
 var ErrNoTriggerConfig = errors.New("no trigger configuration")

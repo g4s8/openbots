@@ -12,6 +12,7 @@ import (
 	goerr "errors"
 
 	"github.com/g4s8/openbots/internal/bot/adaptors"
+	"github.com/g4s8/openbots/internal/bot/data"
 	"github.com/g4s8/openbots/internal/bot/handlers"
 	"github.com/g4s8/openbots/pkg/api"
 	"github.com/g4s8/openbots/pkg/assets"
@@ -33,6 +34,7 @@ var _ types.Bot = (*Bot)(nil)
 type eventHandler struct {
 	types.EventFilter
 	types.Handler
+	types.DataLoader
 }
 
 type Bot struct {
@@ -186,6 +188,7 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 		var (
 			filter types.EventFilter
 			hs     []types.Handler
+			dl     types.DataLoader
 			err    error
 		)
 
@@ -233,6 +236,13 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 		if h.Webhook != nil {
 			hs = append(hs, adaptors.Webhook(h.Webhook, b.state, b.secrets, b.log))
 		}
+		if h.Data != nil {
+			d, err := adaptors.DataLoader(b.state, b.secrets, h.Data, b.log)
+			if err != nil {
+				return errors.Wrap(err, "create data loader")
+			}
+			dl = d
+		}
 
 		if filter == nil {
 			return errors.New("no event filter")
@@ -241,7 +251,7 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 			return errors.New("no handler")
 		}
 		for _, h := range hs {
-			b.Handle(filter, h)
+			b.HandleWithData(filter, h, dl)
 		}
 	}
 	return nil
@@ -261,6 +271,10 @@ func (b *Bot) SetupApiHandlersFromSpec(src []*spec.ApiHandler) error {
 
 func (b *Bot) Handle(filter types.EventFilter, h types.Handler) {
 	b.handlers = append(b.handlers, &eventHandler{EventFilter: filter, Handler: h})
+}
+
+func (b *Bot) HandleWithData(filter types.EventFilter, h types.Handler, dl types.DataLoader) {
+	b.handlers = append(b.handlers, &eventHandler{EventFilter: filter, Handler: h, DataLoader: dl})
 }
 
 func (b *Bot) ApiHandler(id string, h api.Handler) {
@@ -333,28 +347,46 @@ func (b *Bot) HandleUpdate(ctx context.Context, upd *telegram.Update) {
 
 // HandleUpdateErr handles telegram update and returns error if any.
 func (b *Bot) HandleUpdateErr(ctx context.Context, upd *telegram.Update) error {
+	type handler struct {
+		handler types.Handler
+		data    types.DataLoader
+	}
+
 	chatID := handlers.ChatID(upd)
-	log := b.log.With().Str("chat-id", chatID.String()).Logger()
+	log := b.log.With().Str("chat_id", chatID.String()).Logger()
 	log.Debug().Msg("Handling update")
 
 	var errs []error
-	handlers := make([]types.Handler, 0)
+	handlers := make([]handler, 0)
 	for _, h := range b.handlers {
 		if check, err := h.Check(ctx, upd); err != nil {
 			errs = append(errs, errors.Wrap(err, "filter check"))
 			continue
 		} else if check {
-			handlers = append(handlers, h)
+			handlers = append(handlers, handler{handler: h.Handler, data: h.DataLoader})
 		}
 	}
+
 	log.Debug().Int("handlers", len(handlers)).Msg("Handlers found")
 	for i, h := range handlers {
 		log.Debug().Int("handler", i).Msg("Handling")
-		if err := h.Handle(ctx, upd, b.botAPI); err != nil {
+
+		ctx := ctx
+		if h.data != nil {
+			var c types.DataContainer
+			if err := h.data.Load(ctx, &c, upd); err != nil {
+				errs = append(errs, errors.Wrap(err, "load data"))
+				continue
+			}
+			ctx = data.ContextWithContainer(ctx, &c)
+		}
+
+		if err := h.handler.Handle(ctx, upd, b.botAPI); err != nil {
 			errs = append(errs, errors.Wrap(err, "handler"))
 			continue
 		}
 	}
+
 	log.Debug().Msg("Update handled")
 	return goerr.Join(errs...)
 }
