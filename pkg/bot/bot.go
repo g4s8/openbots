@@ -12,6 +12,7 @@ import (
 	goerr "errors"
 
 	"github.com/g4s8/openbots/internal/bot/adaptors"
+	botctx "github.com/g4s8/openbots/internal/bot/ctx"
 	"github.com/g4s8/openbots/internal/bot/data"
 	"github.com/g4s8/openbots/internal/bot/handlers"
 	"github.com/g4s8/openbots/pkg/api"
@@ -43,7 +44,7 @@ type Bot struct {
 
 	apiAddr string
 
-	context    types.ContextProvider
+	cp         *botctx.Provider
 	state      types.StateProvider
 	assets     types.Assets
 	payments   types.PaymentProviders
@@ -66,7 +67,7 @@ func New(botAPI *telegram.BotAPI, state types.StateProvider,
 		handlers:    make([]*eventHandler, 0),
 		apiHandlers: make(map[string][]api.Handler),
 		apiAddr:     apiAddr,
-		context:     context,
+		cp:          botctx.NewProvider(context),
 		state:       state,
 		assets:      assets,
 		payments:    paymentProviders,
@@ -205,7 +206,7 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 			}
 		}
 		if h.Trigger.Context != "" {
-			filter = handlers.NewContextFilter(filter, b.context, h.Trigger.Context)
+			filter = handlers.NewContextFilter(filter, b.cp, h.Trigger.Context)
 		}
 		// TODO: refactor all filters/triggers similat to handlers
 		if h.Trigger.PreCheckout != nil {
@@ -227,10 +228,10 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 		}
 		if h.Context != nil {
 			if h.Context.Set != "" {
-				hs = append(hs, handlers.NewContextSetter(b.context, h.Context.Set, b.log))
+				hs = append(hs, handlers.NewContextSetter(b.cp, h.Context.Set, b.log))
 			}
 			if h.Context.Delete != "" {
-				hs = append(hs, handlers.NewContextDeleter(b.context, h.Context.Delete, b.log))
+				hs = append(hs, handlers.NewContextDeleter(b.cp, h.Context.Delete, b.log))
 			}
 		}
 		if h.Webhook != nil {
@@ -355,6 +356,13 @@ func (b *Bot) HandleUpdateErr(ctx context.Context, upd *telegram.Update) error {
 	chatID := handlers.ChatID(upd)
 	log := b.log.With().Str("chat_id", chatID.String()).Logger()
 	log.Debug().Msg("Handling update")
+	ctxCloser := b.cp.Begin(chatID)
+	defer func() {
+		if err := ctxCloser(ctx); err != nil {
+			log.Error().Err(err).Msg("Close context")
+		}
+		log.Info().Msg("Context closed")
+	}()
 
 	var errs []error
 	handlers := make([]handler, 0)
