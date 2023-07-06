@@ -288,7 +288,7 @@ func (b *Bot) ApiHandler(id string, h api.Handler) {
 }
 
 func (b *Bot) Start() error {
-	telegram.SetLogger(logger.Wrap(b.log.With().Str("component", "telegram").Logger(), zerolog.InfoLevel))
+	_ = telegram.SetLogger(logger.Wrap(b.log.With().Str("component", "telegram").Logger(), zerolog.InfoLevel))
 
 	updCfg := telegram.NewUpdate(0)
 	updCfg.Timeout = 30
