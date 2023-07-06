@@ -15,6 +15,7 @@ import (
 	botctx "github.com/g4s8/openbots/internal/bot/ctx"
 	"github.com/g4s8/openbots/internal/bot/data"
 	"github.com/g4s8/openbots/internal/bot/handlers"
+	"github.com/g4s8/openbots/internal/bot/logger"
 	"github.com/g4s8/openbots/pkg/api"
 	"github.com/g4s8/openbots/pkg/assets"
 	ctx "github.com/g4s8/openbots/pkg/context"
@@ -287,6 +288,8 @@ func (b *Bot) ApiHandler(id string, h api.Handler) {
 }
 
 func (b *Bot) Start() error {
+	telegram.SetLogger(logger.Wrap(b.log.With().Str("component", "telegram").Logger(), zerolog.InfoLevel))
+
 	updCfg := telegram.NewUpdate(0)
 	updCfg.Timeout = 30
 	updCh := b.botAPI.GetUpdatesChan(updCfg)
