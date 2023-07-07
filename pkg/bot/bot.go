@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 	"sync"
 	"time"
@@ -89,7 +88,7 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 
 	botID := botAPI.Self.ID
 
-	log := zerolog.New(zerolog.ConsoleWriter{Out: log.Writer()}).With().Timestamp().Logger()
+	log := zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout}).With().Timestamp().Logger()
 	if s.Debug {
 		log = log.Level(zerolog.DebugLevel)
 	} else {
@@ -124,7 +123,7 @@ func NewFromSpec(s *spec.Bot) (*Bot, error) {
 		if s.Config.Persistence.DBConfig.NoSSL {
 			conString += " sslmode=disable"
 		}
-		log.Debug().Msg("Connecting database")
+		log.Debug().Str("host", s.Config.Persistence.DBConfig.Host).Msg("Connecting database")
 		db, err := sql.Open("postgres", conString)
 		if err != nil {
 			return nil, errors.Wrap(err, "open database")
@@ -307,36 +306,40 @@ func (b *Bot) Start() error {
 		}
 	}()
 	if b.apiAddr != "" {
-		handlers := make(map[string]api.Handler, len(b.apiHandlers))
-		for id, hs := range b.apiHandlers {
-			handlers[id] = &apiHandlerGroup{handlers: hs}
-		}
-		b.apiService = api.NewService(api.Config{
+		b.apiService = b.HandlerAPI(api.Config{
 			Addr:           b.apiAddr,
 			ReadTimeout:    time.Second * 5,
 			RequestTimeout: time.Second * 3,
-		}, handlers)
+		})
 		if err := b.apiService.Start(context.TODO()); err != nil {
 			return errors.Wrap(err, "start api service")
 		}
-		log.Printf("API service started on `%s`", b.apiAddr)
+		b.log.Info().Str("addr", b.apiAddr).Msg("API service started")
 	}
-	log.Print("Bot started")
+	b.log.Info().Msg("Bot started")
 	return nil
+}
+
+func (b *Bot) HandlerAPI(cfg api.Config) *api.Service {
+	handlers := make(map[string]api.Handler, len(b.apiHandlers))
+	for id, hs := range b.apiHandlers {
+		handlers[id] = &apiHandlerGroup{handlers: hs}
+	}
+	return api.NewService(cfg, handlers)
 }
 
 func (b *Bot) Stop() error {
 	b.stopOnce.Do(func() {
-		log.Println("Stopping bot")
+		b.log.Info().Msg("Stopping bot")
 		b.botAPI.StopReceivingUpdates()
 		close(b.quitCh)
 		if b.apiService != nil {
 			if err := b.apiService.Stop(context.TODO()); err != nil {
-				log.Printf("Error stopping API service: %v", err)
+				b.log.Error().Err(err).Msg("Error stopping API service")
 			}
 		}
 		<-b.doneCh
-		log.Print("Bot stopped")
+		b.log.Info().Msg("Bot stopped")
 	})
 	return nil
 }
