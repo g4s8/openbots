@@ -39,6 +39,7 @@ func NewMessageReply(
 	template Template, logger zerolog.Logger, modifiers ...MessageModifier,
 ) *MessageReply {
 	return &MessageReply{
+		bot:       bot,
 		sp:        sp,
 		secrets:   secrets,
 		template:  template,
