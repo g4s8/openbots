@@ -58,10 +58,14 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var jsonPayload struct {
 		ChatID  int64             `json:"chat_id"`
 		Payload map[string]string `json:"params"`
+		Data    map[string]string `json:"data"`
 	}
 	if err := json.NewDecoder(req.Body).Decode(&jsonPayload); err != nil {
 		http.Error(w, fmt.Sprintf("invalid payload: %v", err), http.StatusBadRequest)
 		return
+	}
+	if jsonPayload.Payload == nil && jsonPayload.Data != nil {
+		jsonPayload.Payload = jsonPayload.Data
 	}
 
 	select {
