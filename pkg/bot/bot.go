@@ -11,6 +11,7 @@ import (
 	goerr "errors"
 
 	"github.com/g4s8/openbots/internal/bot/adaptors"
+	internal_api "github.com/g4s8/openbots/internal/bot/api"
 	botctx "github.com/g4s8/openbots/internal/bot/ctx"
 	"github.com/g4s8/openbots/internal/bot/data"
 	"github.com/g4s8/openbots/internal/bot/handlers"
@@ -267,7 +268,7 @@ func (b *Bot) SetupApiHandlersFromSpec(src []*spec.ApiHandler) error {
 				if err != nil {
 					return errors.Wrap(err, "create api message reply handler")
 				}
-				b.ApiHandler(h.ID, handler)
+				b.ApiHandler(h.ID, internal_api.NewSendMessage(act.ChatID, handler))
 			}
 		}
 	}

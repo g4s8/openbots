@@ -14,8 +14,8 @@ bot:
       - id: notify
         actions:
           - send-message:
-              text:
-                param: message
+              text: Hello ${data.text}
+            chat-id: 1234 # optional, could be specified in payload request
 ```
 And then call it:
 ```
@@ -23,9 +23,8 @@ POST /handlers/notify
 
 
 {
-  "chat_id": 1234,
-  "params": {
-    "message":"test"
+  "data": {
+    "text":"test"
   }
 }
 ```

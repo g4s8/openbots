@@ -1,6 +1,8 @@
 package spec
 
 import (
+	"strconv"
+
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -28,6 +30,26 @@ func (s *yamlScalarOrSeq) UnmarshalYAML(node *yaml.Node) error {
 		return s.UnmarshalYAML(node.Alias)
 	default:
 		return errors.Errorf("unexpected node kind: %v", node.Kind)
+	}
+	return nil
+}
+
+// OptUint64 is a uint64 that can be omitted in YAML.
+type OptUint64 struct {
+	Value uint64
+	Valid bool
+}
+
+func (o *OptUint64) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.ScalarNode {
+		val, err := strconv.ParseUint(node.Value, 10, 64)
+		if err != nil {
+			return errors.Wrapf(err, "parse %q as uint64", node.Value)
+		}
+		o.Value = val
+		o.Valid = true
+	} else {
+		return errors.Errorf("expected scalar node, got %v", node.Kind)
 	}
 	return nil
 }

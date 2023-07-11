@@ -2,36 +2,27 @@ package api
 
 import (
 	"context"
-	"log"
 
 	"github.com/g4s8/openbots/pkg/api"
-	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/pkg/errors"
+	"github.com/g4s8/openbots/pkg/spec"
+	"github.com/g4s8/openbots/pkg/types"
 )
 
 type SendMessage struct {
-	tg   *telegram.BotAPI
-	text Argument
+	chatID  spec.OptUint64
+	handler api.Handler
 }
 
-func NewSendMessage(tg *telegram.BotAPI, text Argument) *SendMessage {
+func NewSendMessage(chatID spec.OptUint64, handler api.Handler) *SendMessage {
 	return &SendMessage{
-		tg:   tg,
-		text: text,
+		chatID:  chatID,
+		handler: handler,
 	}
 }
 
 func (sm *SendMessage) Call(ctx context.Context, req api.Request) error {
-	log.Printf("send message: req=%+v", req)
-	text, err := sm.text.Get(req)
-	if err != nil {
-		return errors.Wrap(err, "get 'text' argument")
+	if req.ChatID == 0 && sm.chatID.Valid {
+		req.ChatID = types.ChatID(sm.chatID.Value)
 	}
-
-	msg := telegram.NewMessage(int64(req.ChatID), text)
-	if _, err := sm.tg.Send(msg); err != nil {
-		return errors.Wrap(err, "send message")
-	}
-
-	return nil
+	return sm.handler.Call(ctx, req)
 }
