@@ -10,14 +10,5 @@ type ApiHandler struct {
 }
 
 type ApiAction struct {
-	SendMessage *ApiSendMesageAction `yaml:"send-message"`
-}
-
-type ApiSendMesageAction struct {
-	Text *ApiArg `yaml:"text"`
-}
-
-type ApiArg struct {
-	Param string `yaml:"param"`
-	Value string `yaml:"value"`
+	SendMessage *MessageReply `yaml:"send-message"`
 }

@@ -21,6 +21,8 @@ func (cid ChatID) Int64() int64 {
 
 // Handler of telegram update message.
 type Handler interface {
+	// Handle update message.
+	// telegram.BotAPI is deprecated and will be removed in future versions.
 	Handle(context.Context, *telegram.Update, *telegram.BotAPI) error
 }
 

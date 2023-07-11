@@ -42,8 +42,8 @@ and `state` field loads `foo` key from state:
     "state": "one"
   },
   "meta": {
-    chat_id: 1234,
-    timestamp: "01-01-2023T01:02:03.000Z"
+    "chat_id": 1234,
+    "timestamp": "01-01-2023T01:02:03.000Z"
   }
 }
 ```

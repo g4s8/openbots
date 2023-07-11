@@ -12,7 +12,10 @@ import (
 	"go.uber.org/multierr"
 )
 
-func MessageRepply(sp types.StateProvider, secrets types.Secrets, s *spec.MessageReply, log zerolog.Logger) (*handlers.MessageReply, error) {
+func MessageRepply(bot *telegram.BotAPI,
+	sp types.StateProvider, secrets types.Secrets, s *spec.MessageReply,
+	log zerolog.Logger,
+) (*handlers.MessageReply, error) {
 	var modifiers []handlers.MessageModifier
 	if s.Markup != nil && len(s.Markup.Keyboard) > 0 {
 		modifiers = append(modifiers, handlers.MessageWithKeyboard(s.Markup.Keyboard))
@@ -39,7 +42,7 @@ func MessageRepply(sp types.StateProvider, secrets types.Secrets, s *spec.Messag
 	if err != nil {
 		return nil, errors.Wrap(err, "create template")
 	}
-	return handlers.NewMessageReply(sp, secrets, tpl, log, modifiers...), nil
+	return handlers.NewMessageReply(bot, sp, secrets, tpl, log, modifiers...), nil
 }
 
 func CallbackReply(s *spec.CallbackReply) *handlers.CallbackReply {
@@ -76,13 +79,13 @@ func (h *multiHandler) Handle(ctx context.Context, upd *telegram.Update, bot *te
 	return nil
 }
 
-func Replies(sp types.StateProvider, secrets types.Secrets, assets types.Assets, payments types.PaymentProviders,
+func Replies(bot *telegram.BotAPI, sp types.StateProvider, secrets types.Secrets, assets types.Assets, payments types.PaymentProviders,
 	r []*spec.Reply, log zerolog.Logger,
 ) (types.Handler, error) {
 	var handlers []types.Handler
 	for _, reply := range r {
 		if reply.Message != nil {
-			h, err := MessageRepply(sp, secrets, reply.Message, log)
+			h, err := MessageRepply(bot, sp, secrets, reply.Message, log)
 			if err != nil {
 				return nil, errors.Wrap(err, "create message reply handler")
 			}

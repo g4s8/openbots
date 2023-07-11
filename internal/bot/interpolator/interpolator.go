@@ -21,7 +21,7 @@ func New(state map[string]string, secrets map[string]types.Secret, upd *telegram
 		state:   state,
 		secrets: secrets,
 	}
-	if upd.Message != nil {
+	if upd != nil && upd.Message != nil {
 		res.message = upd.Message
 	}
 	return res

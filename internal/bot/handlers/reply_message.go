@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/g4s8/openbots/internal/bot/data"
+	"github.com/g4s8/openbots/pkg/api"
 	"github.com/g4s8/openbots/pkg/state"
 	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -16,10 +17,14 @@ type (
 	MessageModifier func(*telegram.MessageConfig)
 )
 
-var _ types.Handler = (*MessageReply)(nil)
+var (
+	_ types.Handler = (*MessageReply)(nil)
+	_ api.Handler   = (*MessageReply)(nil)
+)
 
 // MessageReply handler processes telegram updates and reply message to them.
 type MessageReply struct {
+	bot       *telegram.BotAPI
 	sp        types.StateProvider
 	secrets   types.Secrets
 	template  Template
@@ -28,7 +33,9 @@ type MessageReply struct {
 }
 
 // NewMessageReply from repliers funcs.
-func NewMessageReply(sp types.StateProvider, secrets types.Secrets,
+func NewMessageReply(
+	bot *telegram.BotAPI,
+	sp types.StateProvider, secrets types.Secrets,
 	template Template, logger zerolog.Logger, modifiers ...MessageModifier,
 ) *MessageReply {
 	return &MessageReply{
@@ -40,9 +47,7 @@ func NewMessageReply(sp types.StateProvider, secrets types.Secrets,
 	}
 }
 
-func (h *MessageReply) Handle(ctx context.Context, upd *telegram.Update,
-	bot *telegram.BotAPI,
-) error {
+func (h *MessageReply) Handle(ctx context.Context, upd *telegram.Update, _ *telegram.BotAPI) error {
 	state := state.NewUserState()
 	defer state.Close()
 
@@ -65,8 +70,33 @@ func (h *MessageReply) Handle(ctx context.Context, upd *telegram.Update,
 	for _, modifier := range h.modifiers {
 		modifier(&msg)
 	}
-	if _, err := bot.Send(msg); err != nil {
+	if _, err := h.bot.Send(msg); err != nil {
 		return errors.Wrap(err, "reply message")
+	}
+	return nil
+}
+
+func (h *MessageReply) Call(ctx context.Context, req api.Request) error {
+	state := state.NewUserState()
+	defer state.Close()
+
+	secretMap, err := h.secrets.Get(ctx)
+	if err != nil {
+		return errors.Wrap(err, "get secrets")
+	}
+	data := data.FromApiRequest(&req)
+
+	response, err := h.template.Format(newTemplateContext(nil, state, secretMap, data.Get()))
+	if err != nil {
+		return errors.Wrap(err, "format template")
+	}
+
+	msg := telegram.NewMessage(int64(req.ChatID), response)
+	for _, modifier := range h.modifiers {
+		modifier(&msg)
+	}
+	if _, err := h.bot.Send(msg); err != nil {
+		return errors.Wrap(err, "send message")
 	}
 	return nil
 }

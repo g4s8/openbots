@@ -217,7 +217,7 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 		}
 
 		if h.Replies != nil {
-			h, err := adaptors.Replies(b.state, b.secrets, b.assets, b.payments, h.Replies, b.log)
+			h, err := adaptors.Replies(b.botAPI, b.state, b.secrets, b.assets, b.payments, h.Replies, b.log)
 			if err != nil {
 				return errors.Wrap(err, "create replies handler")
 			}
@@ -262,8 +262,12 @@ func (b *Bot) SetupApiHandlersFromSpec(src []*spec.ApiHandler) error {
 	for _, h := range src {
 		for _, act := range h.Actions {
 			if act.SendMessage != nil {
-				b.ApiHandler(h.ID,
-					adaptors.ApiSendMessage(b.botAPI, act.SendMessage))
+				handler, err := adaptors.MessageRepply(b.botAPI, b.state, b.secrets, act.SendMessage,
+					b.log.With().Str("component", "api").Str("handler", h.ID).Logger())
+				if err != nil {
+					return errors.Wrap(err, "create api message reply handler")
+				}
+				b.ApiHandler(h.ID, handler)
 			}
 		}
 	}
