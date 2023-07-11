@@ -121,7 +121,7 @@ func Replies(bot *telegram.BotAPI, sp types.StateProvider, secrets types.Secrets
 }
 
 func Webhook(s *spec.Webhook, sp types.StateProvider, secrets types.Secrets, log zerolog.Logger) types.Handler {
-	return handlers.NewWebhook(s.URL, s.Method, s.Data, sp, secrets, log)
+	return handlers.NewWebhook(s.URL, s.Method, s.Headers, s.Data, sp, secrets, log)
 }
 
 func newEdit(s *spec.Edit, sp types.StateProvider, secrets types.Secrets, log zerolog.Logger) (types.Handler, error) {

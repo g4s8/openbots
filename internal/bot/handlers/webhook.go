@@ -23,6 +23,7 @@ var _ types.Handler = (*Webhook)(nil)
 type Webhook struct {
 	url     *url.URL
 	method  string
+	headers map[string]string
 	data    map[string]string
 	sp      types.StateProvider
 	secrets types.Secrets
@@ -31,12 +32,15 @@ type Webhook struct {
 	cli *http.Client
 }
 
-func NewWebhook(url *url.URL, method string, data map[string]string, sp types.StateProvider,
+func NewWebhook(url *url.URL,
+	method string, headers map[string]string,
+	data map[string]string, sp types.StateProvider,
 	secrets types.Secrets, log zerolog.Logger,
 ) *Webhook {
 	return &Webhook{
 		url:     url,
 		method:  method,
+		headers: headers,
 		data:    data,
 		sp:      sp,
 		secrets: secrets,
@@ -84,7 +88,10 @@ func (h *Webhook) Handle(ctx context.Context, upd *telegram.Update, _ *telegram.
 	if err != nil {
 		return errors.Wrap(err, "make HTTP request")
 	}
-	req.Header.Add("Content-Type", "application/json")
+	for k, v := range h.headers {
+		req.Header.Set(k, interpolator.Interpolate(v))
+	}
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := h.cli.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "call HTTP")
