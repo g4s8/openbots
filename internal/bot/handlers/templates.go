@@ -38,7 +38,7 @@ func NewDefaultTemplate(src string) (Template, error) {
 }
 
 func NewGoTemplate(src string) (Template, error) {
-	tpl, err := template.New("go").Parse(src)
+	tpl, err := template.New("go").Funcs(templateFuncs).Parse(src)
 	if err != nil {
 		return nil, errors.Wrap(err, "parse template")
 	}
