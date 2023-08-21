@@ -41,15 +41,40 @@ type OptUint64 struct {
 }
 
 func (o *OptUint64) UnmarshalYAML(node *yaml.Node) error {
-	if node.Kind == yaml.ScalarNode {
-		val, err := strconv.ParseUint(node.Value, 10, 64)
-		if err != nil {
-			return errors.Wrapf(err, "parse %q as uint64", node.Value)
-		}
-		o.Value = val
-		o.Valid = true
-	} else {
-		return errors.Errorf("expected scalar node, got %v", node.Kind)
+	res, err := unmarshalOptYaml(node, func(s string) (uint64, error) {
+		return strconv.ParseUint(s, 10, 64)
+	})
+	if err != nil {
+		return err
 	}
+	o.Value = res
+	o.Valid = true
 	return nil
+}
+
+type OptBool struct {
+	Value bool
+	Valid bool
+}
+
+func (o *OptBool) UnmarshalYAML(node *yaml.Node) error {
+	res, err := unmarshalOptYaml(node, strconv.ParseBool)
+	if err != nil {
+		return err
+	}
+	o.Value = res
+	o.Valid = true
+	return nil
+}
+
+func unmarshalOptYaml[T any](node *yaml.Node, parser func(string) (T, error)) (T, error) {
+	switch node.Kind {
+	case yaml.ScalarNode:
+		return parser(node.Value)
+	case yaml.AliasNode:
+		return unmarshalOptYaml(node.Alias, parser)
+	default:
+		var zero T
+		return zero, errors.Errorf("expected scalar or alias node, got %v", node.Kind)
+	}
 }

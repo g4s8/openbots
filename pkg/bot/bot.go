@@ -14,6 +14,7 @@ import (
 	internal_api "github.com/g4s8/openbots/internal/bot/api"
 	botctx "github.com/g4s8/openbots/internal/bot/ctx"
 	"github.com/g4s8/openbots/internal/bot/data"
+	"github.com/g4s8/openbots/internal/bot/filters"
 	"github.com/g4s8/openbots/internal/bot/handlers"
 	"github.com/g4s8/openbots/internal/bot/logger"
 	"github.com/g4s8/openbots/pkg/api"
@@ -215,6 +216,10 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 		}
 		if h.Trigger.PostCheckout != nil {
 			filter = adaptors.NewPostcheckoutFilter(h.Trigger.PostCheckout)
+		}
+		if len(h.Trigger.State) > 0 {
+			f := adaptors.NewStateFilter(b.state, b.log, h.Trigger.State)
+			filter = filters.Join(filter, f)
 		}
 
 		if h.Replies != nil {

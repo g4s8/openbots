@@ -11,6 +11,7 @@ type Trigger struct {
 	Context      string               `yaml:"context"`
 	PreCheckout  *PreCheckoutTrigger  `yaml:"preCheckout"`
 	PostCheckout *PostCheckoutTrigger `yaml:"postCheckout"`
+	State        []StateCondition     `yaml:"state"`
 }
 
 func (t *Trigger) validate() (errs []error) {
@@ -93,4 +94,21 @@ func (ct *CallbackTrigger) UnmarshalYAML(node *yaml.Node) error {
 		return errors.Errorf("unexpected node kind: %v", node.Kind)
 	}
 	return nil
+}
+
+type StateCondition struct {
+	Key     string  `yaml:"key"`
+	Present OptBool `yaml:"present"`
+	Eq      string  `yaml:"eq"`
+	NEq     string  `yaml:"neq"`
+}
+
+func (sc *StateCondition) validate() []error {
+	if sc.Key == "" {
+		return []error{errors.New("empty state condition key")}
+	}
+	if !sc.Present.Valid && sc.Eq == "" && sc.NEq == "" {
+		return []error{errors.New("empty state condition value")}
+	}
+	return []error{}
 }
