@@ -87,3 +87,49 @@ handlers:
 
 These "Yes" and "No" handlers will be triggered only when context is `delete-question`,
 which is set to this value only after user command `/delete`.
+
+## State triggers
+
+State triggers can enable (or disable) handlers based on state conditions.
+One trigger may include multiple conditions which are applied using `and` rule (all conditions should be true).
+
+Supported state trigger conditions are:
+ - `eq` - state value should be present and equal to spec value.
+ - `neq` - state value can be either empty or not equal to spec value.
+ - `present` - bool flah which match if some state value is present.
+
+```yaml
+    - on:
+        message: CheckEQ
+        # check if state value `x` == `1`
+        state:
+        - key: x
+          eq: "1"
+      reply:
+      - message: "x = 1"
+    - on:
+        message: CheckEQ
+        # check if state value `x` != `1`
+        state:
+        - key: x
+          neq: "1"
+      reply:
+      - message: "x != 1"
+
+    - on:
+        message: Present
+        # check if state has value `x`
+        state:
+        - key: x
+          present: true
+      reply:
+      - message: "has x"
+    - on:
+        message: Present
+        # check if state does not have value `x`
+        state:
+        - key: x
+          present: false
+      reply:
+      - message: "x is empty"
+```
