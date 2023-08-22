@@ -237,3 +237,33 @@ Example:
         name: Test file
         key: /tmp/assets/test-document.pdf
 ```
+
+## Validators
+
+Message may include validation config. E.g.:
+```yaml
+- on:
+    message: test
+  reply:
+  - message:
+      text: "Enter `x`"
+  context:
+    set: x
+- on:
+    context: x
+  validate:
+    error_message: x should be a number
+    checks: ["not_empty", "is_int"]
+  state:
+    set:
+      x: "${message.text}"
+  reply:
+  - message:
+      text: x is a number
+```
+
+Here `validation` spec includes two properties:
+ - `error_message` (string) to send this error message to user in case of validation failed
+ - `checks` (list of strings) list of validation checks to perform. Supported checks are: `not_empty`, `is_int`,
+ `is_float`, `is_bool`.
+

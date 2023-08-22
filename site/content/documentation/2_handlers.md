@@ -27,6 +27,7 @@ Handler can declare these elements:
  - Web-hook `webhook` (optional) - call remote URL on message.
  - State `state` (optional) - change current state for the user.
  - Context `context` (optional) - change current context.
+ - Vlidators `validate` (optional) - validators for current update.
 
 The trigger is always required and at least one action must be declared in handler.
 

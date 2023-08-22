@@ -191,3 +191,16 @@ func newInvoice(s *spec.Invoice, providers types.PaymentProviders, log zerolog.L
 func newPreCheckoutAnswer(s *spec.PreCheckoutAnswer, log zerolog.Logger) types.Handler {
 	return handlers.NewPreCheckout(s.Ok, s.ErrorMessage, log)
 }
+
+func Validator(s *spec.Validators, log zerolog.Logger) (types.Handler, error) {
+	checks := make([]handlers.Check, len(s.Checks))
+	for i, sc := range s.Checks {
+		c, err := handlers.ParseCheckString(string(sc))
+		if err != nil {
+			return nil, errors.Wrap(err, "parse check string")
+		}
+		checks[i] = c
+	}
+	return handlers.NewValidator(log.With().Str("handler", "validator").Str("component", "validators").Logger(),
+		s.ErrorMessage, checks...), nil
+}

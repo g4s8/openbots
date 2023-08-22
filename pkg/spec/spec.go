@@ -25,12 +25,13 @@ type Bot struct {
 
 // Handler specification declares bot handlers.
 type Handler struct {
-	Trigger *Trigger `yaml:"on"`
-	Replies []*Reply `yaml:"reply"`
-	Webhook *Webhook `yaml:"webhook"`
-	State   *State   `yaml:"state"`
-	Context *Context `yaml:"context"`
-	Data    *Data    `yaml:"data"`
+	Trigger  *Trigger    `yaml:"on"`
+	Replies  []*Reply    `yaml:"reply"`
+	Webhook  *Webhook    `yaml:"webhook"`
+	State    *State      `yaml:"state"`
+	Context  *Context    `yaml:"context"`
+	Data     *Data       `yaml:"data"`
+	Validate *Validators `yaml:"validate"`
 }
 
 var ErrNoTriggerConfig = errors.New("no trigger configuration")

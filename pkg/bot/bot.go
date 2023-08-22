@@ -222,6 +222,14 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 			filter = filters.Join(filter, f)
 		}
 
+		// validator should be the first handler
+		if v := h.Validate; v != nil {
+			h, err := adaptors.Validator(v, b.log)
+			if err != nil {
+				return errors.Wrap(err, "create validator handler")
+			}
+			hs = append(hs, h)
+		}
 		if h.Replies != nil {
 			h, err := adaptors.Replies(b.botAPI, b.state, b.secrets, b.assets, b.payments, h.Replies, b.log)
 			if err != nil {
@@ -381,18 +389,18 @@ func (b *Bot) HandleUpdateErr(ctx context.Context, upd *telegram.Update) error {
 	}()
 
 	var errs []error
-	handlers := make([]handler, 0)
+	hs := make([]handler, 0)
 	for _, h := range b.handlers {
 		if check, err := h.Check(ctx, upd); err != nil {
 			errs = append(errs, errors.Wrap(err, "filter check"))
 			continue
 		} else if check {
-			handlers = append(handlers, handler{handler: h.Handler, data: h.DataLoader})
+			hs = append(hs, handler{handler: h.Handler, data: h.DataLoader})
 		}
 	}
 
-	log.Debug().Int("handlers", len(handlers)).Msg("Handlers found")
-	for i, h := range handlers {
+	log.Debug().Int("handlers", len(hs)).Msg("Handlers found")
+	for i, h := range hs {
 		log.Debug().Int("handler", i).Msg("Handling")
 
 		ctx := ctx
@@ -406,6 +414,10 @@ func (b *Bot) HandleUpdateErr(ctx context.Context, upd *telegram.Update) error {
 		}
 
 		if err := h.handler.Handle(ctx, upd, b.botAPI); err != nil {
+			if errors.Is(err, handlers.ErrValidationFailed) {
+				log.Info().Err(err).Msg("Validation failed")
+				return nil
+			}
 			errs = append(errs, errors.Wrap(err, "handler"))
 			continue
 		}

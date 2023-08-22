@@ -70,11 +70,13 @@ Full feature list:
  - [x] reply with images
  - [ ] handle image messages
  - [x] delete messages
- - [ ] API:
+ - [x] API:
    - [x] send message to particular user
  - [x] call webhook on update
  - [x] database storage
  - [x] payments
+ - [x] validation
+ - [x] state operations
  
 ## Persistence
 
