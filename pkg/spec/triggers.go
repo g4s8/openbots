@@ -5,6 +5,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Trigger is a handler trigger whcich configures when the handler should be
+// executed.
 type Trigger struct {
 	Message      *MessageTrigger      `yaml:"message"`
 	Callback     *CallbackTrigger     `yaml:"callback"`
@@ -44,20 +46,20 @@ func (t *MessageTrigger) validate() []error {
 func (t *MessageTrigger) UnmarshalYAML(node *yaml.Node) error {
 	switch node.Kind {
 	case yaml.ScalarNode, yaml.SequenceNode, yaml.AliasNode:
-		var s yamlScalarOrSeq
+		var s Strings
 		if err := node.Decode(&s); err != nil {
 			return err
 		}
-		t.Text = s.Value
+		t.Text = s
 	case yaml.MappingNode:
 		schema := &struct {
-			Text    yamlScalarOrSeq `yaml:"text"`
-			Command string          `yaml:"command"`
+			Text    Strings `yaml:"text"`
+			Command string  `yaml:"command"`
 		}{}
 		if err := node.Decode(schema); err != nil {
 			return err
 		}
-		t.Text = schema.Text.Value
+		t.Text = schema.Text
 		t.Command = schema.Command
 	default:
 		return errors.Errorf("unexpected node kind: %v", node.Kind)

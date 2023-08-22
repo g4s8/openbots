@@ -46,3 +46,52 @@ state:
   set:
     name: "${message.text}"
 ```
+
+Also, user's state support some math operations: `add`, `div`, `mul`, `div`. E.g.:
+```yaml
+- on:
+    message:
+      command: inc
+  state:
+    ops:
+    - kind: add
+      key: val
+      value: 1
+  reply:
+  - message: incremented
+- on:
+    message:
+      command: dec
+  state:
+    ops:
+    - kind: sub
+      key: val
+      value: 1
+  reply:
+  - message: decremented
+- on:
+    message:
+      command: mul
+  state:
+    ops:
+    - kind: mul
+      key: val
+      value: 3
+  reply:
+  - message: multiplied *3
+- on:
+    message:
+      command: div
+  state:
+    ops:
+    - kind: div
+      key: val
+      value: 2
+  reply:
+  - message: divided /2
+- on:
+    message:
+      command: val
+  reply:
+  - message: "value: ${state.val}"
+```

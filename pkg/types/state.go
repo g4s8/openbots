@@ -26,5 +26,5 @@ type StateProvider interface {
 }
 
 type StateOp interface {
-	Apply(State, ...func(string) string)
+	Apply(State, ...func(string) string) error
 }

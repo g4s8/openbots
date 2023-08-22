@@ -7,21 +7,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type yamlScalarOrSeq struct {
-	Value []string
-}
+// Strings is a slice of strings that can be unmarshalled from YAML scalars or
+// sequences.
+type Strings []string
 
-func (s *yamlScalarOrSeq) UnmarshalYAML(node *yaml.Node) error {
+func (s *Strings) UnmarshalYAML(node *yaml.Node) error {
 	switch node.Kind {
 	case yaml.ScalarNode:
-		s.Value = []string{node.Value}
+		*s = []string{node.Value}
 	case yaml.SequenceNode:
-		s.Value = make([]string, 0, len(node.Content))
+		*s = make([]string, 0, len(node.Content))
 		for i, node := range node.Content {
 			if node.Kind == yaml.ScalarNode {
-				s.Value = append(s.Value, node.Value)
+				*s = append(*s, node.Value)
 			} else if node.Kind == yaml.AliasNode && node.Alias.Kind == yaml.ScalarNode {
-				s.Value = append(s.Value, node.Alias.Value)
+				*s = append(*s, node.Alias.Value)
 			} else {
 				return errors.Errorf("%d: expected scalar node, got %v", i, node.Kind)
 			}
