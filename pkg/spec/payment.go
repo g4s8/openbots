@@ -49,7 +49,7 @@ type Price struct {
 	// Label of the price
 	Label string `yaml:"label"`
 	// Price in the smallest units of the currency (integer, not float/double).
-	Amount int `yaml:"amount"`
+	Amount string `yaml:"amount"`
 }
 
 // Validate price
@@ -57,9 +57,6 @@ func (p *Price) validate() (errs []error) {
 	errs = make([]error, 0)
 	if p.Label == "" {
 		errs = append(errs, errors.New("empty price label"))
-	}
-	if p.Amount <= 0 {
-		errs = append(errs, errors.New("invalid price amount"))
 	}
 	return
 }

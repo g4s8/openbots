@@ -111,7 +111,7 @@ func Replies(bot *telegram.BotAPI, sp types.StateProvider, secrets types.Secrets
 			handlers = append(handlers, newDocumentReply(reply.Document, assets, log))
 		}
 		if reply.Invoice != nil {
-			handlers = append(handlers, newInvoice(reply.Invoice, payments, log))
+			handlers = append(handlers, newInvoice(reply.Invoice, payments, sp, secrets, log))
 		}
 		if reply.PreCheckout != nil {
 			handlers = append(handlers, newPreCheckoutAnswer(reply.PreCheckout, log))
@@ -171,7 +171,9 @@ func newDocumentReply(s *spec.FileReply, assets types.Assets,
 	return nil
 }
 
-func newInvoice(s *spec.Invoice, providers types.PaymentProviders, log zerolog.Logger) types.Handler {
+func newInvoice(s *spec.Invoice, providers types.PaymentProviders, sp types.StateProvider, secrets types.Secrets,
+	log zerolog.Logger,
+) types.Handler {
 	prices := make([]handlers.InvoicePrice, len(s.Prices))
 	for i, p := range s.Prices {
 		prices[i] = handlers.InvoicePrice{
@@ -179,13 +181,13 @@ func newInvoice(s *spec.Invoice, providers types.PaymentProviders, log zerolog.L
 			Amount: p.Amount,
 		}
 	}
-	return handlers.NewSendInvoice(providers, s.Provider, handlers.InvoiceConfig{
+	return handlers.NewSendInvoice(providers, sp, secrets, s.Provider, handlers.InvoiceConfig{
 		Title:       s.Title,
 		Description: s.Description,
 		Payload:     s.Payload,
 		Currency:    s.Currency,
 		Prices:      prices,
-	}, log)
+	}, log.With().Str("handler", "send_invoice").Str("component", "handler").Logger())
 }
 
 func newPreCheckoutAnswer(s *spec.PreCheckoutAnswer, log zerolog.Logger) types.Handler {
