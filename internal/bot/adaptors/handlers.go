@@ -45,8 +45,8 @@ func MessageRepply(bot *telegram.BotAPI,
 	return handlers.NewMessageReply(bot, sp, secrets, tpl, log, modifiers...), nil
 }
 
-func CallbackReply(s *spec.CallbackReply) *handlers.CallbackReply {
-	return handlers.NewCallbackReply(s.Text, s.Alert)
+func CallbackReply(sp types.StateProvider, secrets types.Secrets, s *spec.CallbackReply) *handlers.CallbackReply {
+	return handlers.NewCallbackReply(sp, secrets, s.Text, s.Alert)
 }
 
 func inlineKeyboardFromSpec(bts [][]spec.InlineButton) (res handlers.InlineKeyboard) {
@@ -92,7 +92,7 @@ func Replies(bot *telegram.BotAPI, sp types.StateProvider, secrets types.Secrets
 			handlers = append(handlers, h)
 		}
 		if reply.Callback != nil {
-			handlers = append(handlers, CallbackReply(reply.Callback))
+			handlers = append(handlers, CallbackReply(sp, secrets, reply.Callback))
 		}
 		if reply.Edit != nil {
 			h, err := newEdit(reply.Edit, sp, secrets, log)

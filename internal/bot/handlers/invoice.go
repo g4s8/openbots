@@ -52,6 +52,8 @@ func NewSendInvoice(providers types.PaymentProviders, sp types.StateProvider, se
 func (h *SendInvoice) Handle(ctx context.Context, upd *telegram.Update, api *telegram.BotAPI) error {
 	chatID := ChatID(upd)
 	state := state.NewUserState()
+	defer state.Close()
+
 	if err := h.sp.Load(ctx, chatID, state); err != nil {
 		return errors.Wrap(err, "load state")
 	}
