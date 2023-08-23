@@ -65,7 +65,7 @@ func (h *SendInvoice) Handle(ctx context.Context, upd *telegram.Update, api *tel
 		amount := interpolator.Interpolate(p.Amount)
 		amountInt, err := strconv.Atoi(amount)
 		if err != nil {
-			return errors.Wrapf(err, "parse amount %q: %w", amount, err)
+			return errors.Wrapf(err, "parse amount %q", amount)
 		}
 		prices[i] = telegram.LabeledPrice{
 			Label:  p.Label,

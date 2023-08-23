@@ -10,6 +10,7 @@ import (
 
 var templateFuncs = template.FuncMap{
 	"sum": sum,
+	"mul": mul,
 }
 
 func sum(arg0 reflect.Value, args ...reflect.Value) (reflect.Value, error) {

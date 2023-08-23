@@ -28,6 +28,11 @@ func (t *Trigger) validate() (errs []error) {
 	if t.Callback != nil {
 		errs = append(errs, t.Callback.validate()...)
 	}
+	if len(t.State) > 0 {
+		for _, sc := range t.State {
+			errs = append(errs, sc.validate()...)
+		}
+	}
 	return
 }
 

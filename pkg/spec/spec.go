@@ -52,6 +52,9 @@ func (h *Handler) validate() (errs []error) {
 	if h.Data != nil {
 		errs = append(errs, h.Data.validate()...)
 	}
+	if h.Validate != nil {
+		errs = append(errs, h.Validate.validate()...)
+	}
 	return
 }
 
