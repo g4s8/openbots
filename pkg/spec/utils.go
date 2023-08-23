@@ -12,22 +12,50 @@ import (
 type Strings []string
 
 func (s *Strings) UnmarshalYAML(node *yaml.Node) error {
+	return unmarhalYAMLSeqOrScaler(node, (*[]string)(s), func(s string) (string, error) {
+		return s, nil
+	})
+}
+
+// Uints64 is a slice of uint64s that can be unmarshalled from YAML scalars or
+// sequences.
+type Uints64 []uint64
+
+func (u *Uints64) UnmarshalYAML(node *yaml.Node) error {
+	return unmarhalYAMLSeqOrScaler(node, (*[]uint64)(u), func(s string) (uint64, error) {
+		return strconv.ParseUint(s, 10, 64)
+	})
+}
+
+func unmarhalYAMLSeqOrScaler[T any](node *yaml.Node, target *[]T, parser func(string) (T, error)) error {
 	switch node.Kind {
 	case yaml.ScalarNode:
-		*s = []string{node.Value}
+		val, err := parser(node.Value)
+		if err != nil {
+			return errors.Wrap(err, "parsing target")
+		}
+		*target = []T{val}
 	case yaml.SequenceNode:
-		*s = make([]string, 0, len(node.Content))
+		*target = make([]T, 0, len(node.Content))
 		for i, node := range node.Content {
 			if node.Kind == yaml.ScalarNode {
-				*s = append(*s, node.Value)
+				val, err := parser(node.Value)
+				if err != nil {
+					return errors.Wrapf(err, "%d: parsing target", i)
+				}
+				*target = append(*target, val)
 			} else if node.Kind == yaml.AliasNode && node.Alias.Kind == yaml.ScalarNode {
-				*s = append(*s, node.Alias.Value)
+				val, err := parser(node.Alias.Value)
+				if err != nil {
+					return errors.Wrapf(err, "%d: parsing target", i)
+				}
+				*target = append(*target, val)
 			} else {
 				return errors.Errorf("%d: expected scalar node, got %v", i, node.Kind)
 			}
 		}
 	case yaml.AliasNode:
-		return s.UnmarshalYAML(node.Alias)
+		return unmarhalYAMLSeqOrScaler(node.Alias, target, parser)
 	default:
 		return errors.Errorf("unexpected node kind: %v", node.Kind)
 	}

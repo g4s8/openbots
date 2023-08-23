@@ -11,5 +11,5 @@ type ApiHandler struct {
 
 type ApiAction struct {
 	SendMessage *MessageReply `yaml:"send-message"`
-	ChatID      OptUint64     `yaml:"chat-id"`
+	ChatID      Uints64       `yaml:"chat-id"`
 }

@@ -67,3 +67,38 @@ baz:
 		t.Errorf("baz: expected [wer sdf xcv], got %v", s.Baz)
 	}
 }
+
+func TestUints64(t *testing.T) {
+	src := `
+empty: []
+foo: 1
+bar: [1, 2, 3]
+baz:
+- 4
+- 5
+- 6
+`
+	type spec struct {
+		Empty Uints64 `yaml:"empty"`
+		Foo   Uints64 `yaml:"foo"`
+		Bar   Uints64 `yaml:"bar"`
+		Baz   Uints64 `yaml:"baz"`
+	}
+	var s spec
+	if err := yaml.Unmarshal([]byte(src), &s); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(s.Empty) != 0 {
+		t.Errorf("empty: expected [], got %v", s.Empty)
+	}
+	if len(s.Foo) != 1 || s.Foo[0] != 1 {
+		t.Errorf("foo: expected [1], got %v", s.Foo)
+	}
+	if len(s.Bar) != 3 || s.Bar[0] != 1 || s.Bar[1] != 2 || s.Bar[2] != 3 {
+		t.Errorf("bar: expected [1 2 3], got %v", s.Bar)
+	}
+	if len(s.Baz) != 3 || s.Baz[0] != 4 || s.Baz[1] != 5 || s.Baz[2] != 6 {
+		t.Errorf("baz: expected [4 5 6], got %v", s.Baz)
+	}
+}
