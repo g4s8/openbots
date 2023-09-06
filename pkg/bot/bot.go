@@ -385,7 +385,7 @@ func (b *Bot) HandleUpdateErr(ctx context.Context, upd *telegram.Update) error {
 		if err := ctxCloser(ctx); err != nil {
 			log.Error().Err(err).Msg("Close context")
 		}
-		log.Info().Msg("Context closed")
+		log.Trace().Msg("Context closed")
 	}()
 
 	var errs []error
