@@ -29,12 +29,12 @@ func MessageRepply(bot *telegram.BotAPI,
 	}
 	var templater handlers.Templater
 	switch s.Template {
-	case spec.TemplateDefault:
-		templater = handlers.NewDefaultTemplate
 	case spec.TemplateGo:
 		templater = handlers.NewGoTemplate
 	case spec.TemplateNo:
 		templater = handlers.NewNoTemplate
+	case spec.TemplateDefault:
+		fallthrough
 	default:
 		templater = handlers.NewDefaultTemplate
 	}

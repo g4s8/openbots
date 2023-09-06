@@ -21,7 +21,7 @@ func NewSendMessage(chats []uint64, handler api.Handler) *SendMessage {
 }
 
 func (sm *SendMessage) Call(ctx context.Context, req api.Request) error {
-	if req.ChatID == 0 {
+	if req.ChatID != 0 {
 		return sm.handler.Call(ctx, req)
 	}
 	var errs []error
