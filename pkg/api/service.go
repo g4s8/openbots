@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"regexp"
 
 	"github.com/g4s8/openbots/pkg/types"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 var rePath = regexp.MustCompile(`^/handlers/([a-zA-Z0-9-]+)$`)
@@ -18,14 +18,20 @@ var rePath = regexp.MustCompile(`^/handlers/([a-zA-Z0-9-]+)$`)
 type Service struct {
 	cfg      Config
 	handlers map[string]Handler
+	logger   zerolog.Logger
 
 	srv *http.Server
 }
 
 func NewService(cfg Config, handlers map[string]Handler) *Service {
+	return NewServiceWithLogger(cfg, handlers, zerolog.Nop())
+}
+
+func NewServiceWithLogger(cfg Config, handlers map[string]Handler, logger zerolog.Logger) *Service {
 	return &Service{
 		cfg:      cfg,
 		handlers: handlers,
+		logger:   logger,
 	}
 }
 
@@ -40,17 +46,22 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if !rePath.MatchString(req.URL.Path) {
-		log.Printf("not found: %s", req.URL.Path)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	matches := rePath.FindStringSubmatch(req.URL.Path)
-	handler, ok := s.handlers[matches[1]]
+	name := matches[1]
+	handler, ok := s.handlers[name]
 	if !ok {
-		log.Printf("handler not found: %s", matches[1])
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
+	logger := s.logger.With().
+		Str("method", req.Method).
+		Str("path", req.URL.Path).
+		Str("handler", name).
+		Logger()
 
 	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.RequestTimeout)
 	defer cancel()
@@ -61,6 +72,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		Data    map[string]string `json:"data"`
 	}
 	if err := json.NewDecoder(req.Body).Decode(&jsonPayload); err != nil {
+		logger.Err(err).Msg("Invalid payload")
 		http.Error(w, fmt.Sprintf("invalid payload: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -92,12 +104,15 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		default:
 			http.Error(w, apiErr.Error(), http.StatusInternalServerError)
 		}
+		logger.Err(err).Object("details", apiErr).Msg("API error")
 		return
 	}
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		logger.Err(err).Msg("Request timeout")
 		http.Error(w, "request timeout", http.StatusRequestTimeout)
 		return
 	}
+	logger.Err(err).Msg("Internal server error")
 	http.Error(w, fmt.Sprintf("Internal server error: %v", err),
 		http.StatusInternalServerError)
 }
@@ -117,7 +132,7 @@ func (s *Service) Start(ctx context.Context) error {
 	}
 	go func() {
 		if err := s.srv.Serve(ln); err != nil {
-			log.Printf("HTTP server failed: %v", err)
+			s.logger.Err(err).Msg("HTTP server failed")
 		}
 	}()
 	return nil

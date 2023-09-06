@@ -343,7 +343,7 @@ func (b *Bot) HandlerAPI(cfg api.Config) *api.Service {
 	for id, hs := range b.apiHandlers {
 		handlers[id] = &apiHandlerGroup{handlers: hs}
 	}
-	return api.NewService(cfg, handlers)
+	return api.NewServiceWithLogger(cfg, handlers, b.log.With().Str("component", "api_svc").Logger())
 }
 
 func (b *Bot) Stop() error {

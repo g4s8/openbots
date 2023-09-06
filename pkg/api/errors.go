@@ -1,6 +1,10 @@
 package api
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/rs/zerolog"
+)
 
 type ErrorKind int
 
@@ -29,4 +33,10 @@ func (e *Error) Error() string {
 
 func (e *Error) Unwrap() error {
 	return e.base
+}
+
+func (e *Error) MarshalZerologObject(evt *zerolog.Event) {
+	evt.AnErr("base", e.base)
+	evt.Str("msg", e.msg)
+	evt.Int("kind", int(e.kind))
 }
