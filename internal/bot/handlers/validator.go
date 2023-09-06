@@ -81,9 +81,11 @@ func (v *Validator) Handle(ctx context.Context, upd *telegram.Update, api *teleg
 	for _, check := range v.checks {
 		if err := check.perform(upd); err != nil {
 			v.logger.Debug().Err(err).Msg("Validation failed")
-			msg := telegram.NewMessage(upd.Message.Chat.ID, v.errMessage)
-			if _, err := api.Send(msg); err != nil {
-				return fmt.Errorf("failed to send validation error message: %w", err)
+			if upd.Message != nil && upd.Message.Chat != nil {
+				msg := telegram.NewMessage(upd.Message.Chat.ID, v.errMessage)
+				if _, err := api.Send(msg); err != nil {
+					return fmt.Errorf("failed to send validation error message: %w", err)
+				}
 			}
 			return ErrValidationFailed
 		}
