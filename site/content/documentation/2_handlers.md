@@ -1,54 +1,82 @@
 ---
-title: "Handlers"
-date: 2022-09-25T19:37:45+03:00
-weight: 2
+title: "Event Handlers"
+date: 2023-12-06T21:16:24+04:00
+weight: 20
+menuTitle: "Handlers"
 ---
 
-Handlers declare a bot message handler: it specify which conditions of
-incoming message should be matched to perform some action.
+Handlers in the bot configuration play a pivotal role in defining how your bot responds to different Telegram event updates.
+A handler declares various elements that determine its behavior:
 
-The simple handler may look like this:
-```yaml
+## Trigger
+
+The `on` trigger specifies when the handler is triggered.
+The trigger element is required for handler.
+
+ * `message`: Triggers the handler on a text message or command.
+ * `callback`: Triggers on a button callback (part of inline-buttons and callbacks feature).
+ * `context`: Additional selector to trigger the handler only if the current user context is set to a specified value (context feature).
+ * `preCheckout`: Triggers on pre-checkout events (payments feature).
+ * `postCheckout`: Triggers on post-checkout events (payments feature).
+ * `state`: Array of state conditions, an additional filter to run the handler only if the user's state matches these conditions (states feature).
+
+Trigger must have at least one of `message`, `callback`, `context`, `preCheckout`, `postCheckout`, `state` and `context` could be added to other elements.
+`message`, `callback`, `preCheckout`, `postCheckout` could not be mixed together.
+
+Example:
+
+```yml
 bot:
   handlers:
     - on:
         message:
-          text: "Hello"
+          command: start
       reply:
         - message:
-            text: "Hi"
+            text: "Welcome to my bot!"
+    - on:
+        callback:
+          data: "button_click"
+      reply:
+        - message:
+            text: "You clicked a button!"
 ```
 
-This handler reacts to user's message with text "Hello" by replying with answer "Hi".
+In this example, the first handler triggers on the `/start` command, replying with a welcome message.
+The second handler triggers on a button click with the callback data "button\_click" and responds accordingly.
 
-Handler can declare these elements:
- - Trigger `on` (required) - an event matcher used as condition to run handler action.
- - Reply `reply` (optional) - the answers to incoming message.
- - Web-hook `webhook` (optional) - call remote URL on message.
- - State `state` (optional) - change current state for the user.
- - Context `context` (optional) - change current context.
- - Vlidators `validate` (optional) - validators for current update.
+## Reply element
 
-The trigger is always required and at least one action must be declared in handler.
+The `reply` element specifies how to reply to a user event. It can include:
 
-And example of working handler:
-```yaml
+ * **message:** Reply with a text message.
+ * **callback:** Reply to a button callback with a popup text or alert message.
+ * **edit:** Edit the message that triggers this event (e.g., if the message has a button).
+ * **delete:** Delete the message that triggers this event.
+ * **image:** Reply with an image.
+ * **document:** Reply with a document.
+ * **invoice:** Reply with an invoice for payment (discussed later as part of the payments feature).
+ * **preCheckout:** Reply to a pre-checkout event (also part of the payments feature).
+
+One handler may have multiple different reply items.
+
+Example:
+
+```yml
 bot:
   handlers:
-    on:
-      command: start
-    reply:
-      - message:
-        text: "Welcome to my bot!"
-      - message:
-        text: "You can use `/help` command for help"
-    webhook:
-      url: "https://stats.myserver.com/bot1"
-      method: POST
-      data: '{"event": "user_started"}'
-    state:
-      set:
-        new_user: "true"
-    context:
-      set: onboarding
+    - on:
+        message:
+          command: start
+      reply:
+        - message:
+            text: "Welcome to my bot!"
+        - image:
+            name: "Test image"
+            key: "test-image.png"
 ```
+
+In this example, the handler replies with a welcome message and an image when triggered by the `/start` command.
+
+Continue exploring to learn more about the webhook, state, context, data, and validate elements,
+enabling you to create versatile and dynamic bot interactions.

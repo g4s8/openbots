@@ -10,13 +10,18 @@ var DefaultConfig = &Config{
 }
 
 type Config struct {
-	Api              *ApiConfig         `yaml:"api"`
-	Persistence      *PersistenceConfig `yaml:"persistence"`
-	Assets           *AssetsConfig      `yaml:"assets"`
-	PaymentProviders []PaymentProvider  `yaml:"paymentProviders"`
+	// Api configuration specify API server parameters.
+	Api *ApiConfig `yaml:"api"`
+	// Persistence configuration specify persistence type and its parameters.
+	Persistence *PersistenceConfig `yaml:"persistence"`
+	// Assets configuration specify assets providers and its parameters.
+	Assets *AssetsConfig `yaml:"assets"`
+	// PaymentProviders is for payment providers tokens and parameters.
+	PaymentProviders []PaymentProvider `yaml:"paymentProviders"`
 }
 
 type ApiConfig struct {
+	// Address is the address to listen on.
 	Address string `yaml:"address"`
 }
 
@@ -28,8 +33,10 @@ const (
 )
 
 type PersistenceConfig struct {
-	Type     PersistenceType `yaml:"type"`
-	DBConfig *DBConfig       `yaml:"db_config"`
+	// Type is the type of persistence to use.
+	Type PersistenceType `yaml:"type"`
+	// DBConfig is the configuration for database persistence.
+	DBConfig *DBConfig `yaml:"db_config"`
 }
 
 type DBConfig struct {
