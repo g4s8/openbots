@@ -9,3 +9,12 @@ home = [ "HTML", "RSS", "JSON"]
 
 [params]
   themeVariant = "blue"
+  landingPageURL = "/openbots"
+  disableMermaid = true
+  disableLandingPageButton = true
+  description = '''
+  Comprehensive documentation for OpenBots https://github.com/g4s8/openbots and ChatBotCloud https://chatbotcloud.org
+  Learn how to use, configure, and optimize [Product/Tool/Service] with detailed guides, examples, and best practices.
+  '''
+  editURL = "https://github.com/g4s8/openbots/tree/master/site/content/"
+  author = "Kirill Che. g4s8.public@gmail.com"
