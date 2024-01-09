@@ -14,7 +14,10 @@ type Spec struct {
 }
 
 // Bot spec includes bot configuration and handlers.
+//
+//go:generate go run github.com/g4s8/envdoc@latest -output ../../env.md
 type Bot struct {
+	// Token is a Telegram bot token.
 	Token    string            `yaml:"token" env:"BOT_TOKEN"`
 	Config   *Config           `yaml:"config"`
 	State    map[string]string `yaml:"state"`
