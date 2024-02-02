@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
@@ -221,6 +222,9 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 			f := adaptors.NewStateFilter(b.state, b.log, h.Trigger.State)
 			filter = filters.Join(filter, f)
 		}
+		if filter == nil && h.Trigger.Fallback {
+			filter = filters.Fallback
+		}
 
 		// validator should be the first handler
 		if v := h.Validate; v != nil {
@@ -290,6 +294,17 @@ func (b *Bot) SetupApiHandlersFromSpec(src []*spec.ApiHandler) error {
 
 func (b *Bot) Handle(filter types.EventFilter, h types.Handler) {
 	b.handlers = append(b.handlers, &eventHandler{EventFilter: filter, Handler: h})
+	// fallback handler should be the last handler
+	slices.SortFunc(b.handlers, func(left, right *eventHandler) int {
+		leftFallback, rightFallback := left.EventFilter == filters.Fallback, right.EventFilter == filters.Fallback
+		if leftFallback {
+			return 1
+		}
+		if rightFallback {
+			return -1
+		}
+		return 0
+	})
 }
 
 func (b *Bot) HandleWithData(filter types.EventFilter, h types.Handler, dl types.DataLoader) {
@@ -370,13 +385,13 @@ func (b *Bot) HandleUpdate(ctx context.Context, upd *telegram.Update) {
 	}
 }
 
+type handlerWithData struct {
+	handler types.Handler
+	data    types.DataLoader
+}
+
 // HandleUpdateErr handles telegram update and returns error if any.
 func (b *Bot) HandleUpdateErr(ctx context.Context, upd *telegram.Update) error {
-	type handler struct {
-		handler types.Handler
-		data    types.DataLoader
-	}
-
 	chatID := handlers.ChatID(upd)
 	log := b.log.With().Str("chat_id", chatID.String()).Logger()
 	log.Debug().Msg("Handling update")
@@ -389,40 +404,69 @@ func (b *Bot) HandleUpdateErr(ctx context.Context, upd *telegram.Update) error {
 	}()
 
 	var errs []error
-	hs := make([]handler, 0)
+	hs := make([]handlerWithData, 0)
+	var fallbackHandler handlerWithData
 	for _, h := range b.handlers {
+		if h.EventFilter == filters.Fallback {
+			fallbackHandler = handlerWithData{handler: h.Handler, data: h.DataLoader}
+			continue
+		}
 		if check, err := h.Check(ctx, upd); err != nil {
 			errs = append(errs, errors.Wrap(err, "filter check"))
 			continue
 		} else if check {
-			hs = append(hs, handler{handler: h.Handler, data: h.DataLoader})
+			hs = append(hs, handlerWithData{handler: h.Handler, data: h.DataLoader})
 		}
 	}
 
 	log.Debug().Int("handlers", len(hs)).Msg("Handlers found")
+	var handled bool
 	for i, h := range hs {
 		log.Debug().Int("handler", i).Msg("Handling")
 
-		ctx := ctx
-		if h.data != nil {
-			var c types.DataContainer
-			if err := h.data.Load(ctx, &c, upd); err != nil {
-				errs = append(errs, errors.Wrap(err, "load data"))
-				continue
-			}
-			ctx = data.ContextWithContainer(ctx, &c)
+		ok, err := runHandler(ctx, b.botAPI, h, upd)
+		if !handled && ok {
+			handled = true
 		}
-
-		if err := h.handler.Handle(ctx, upd, b.botAPI); err != nil {
+		if err != nil {
 			if errors.Is(err, handlers.ErrValidationFailed) {
 				log.Info().Err(err).Msg("Validation failed")
 				return nil
 			}
-			errs = append(errs, errors.Wrap(err, "handler"))
-			continue
+			errs = append(errs, err)
+		}
+	}
+
+	if !handled && fallbackHandler.handler != nil {
+		log.Debug().Msg("Handling fallback")
+		ok, err := runHandler(ctx, b.botAPI, fallbackHandler, upd)
+		if err != nil {
+			if errors.Is(err, handlers.ErrValidationFailed) {
+				log.Info().Err(err).Msg("Validation failed")
+				return nil
+			}
+			errs = append(errs, err)
+		}
+		if ok {
+			log.Debug().Msg("Fallback handled")
 		}
 	}
 
 	log.Debug().Msg("Update handled")
 	return goerr.Join(errs...)
+}
+
+func runHandler(ctx context.Context, botAPI *telegram.BotAPI, h handlerWithData, upd *telegram.Update) (bool, error) {
+	if h.data != nil {
+		var c types.DataContainer
+		if err := h.data.Load(ctx, &c, upd); err != nil {
+			return false, errors.Wrap(err, "load data")
+		}
+		ctx = data.ContextWithContainer(ctx, &c)
+	}
+
+	if err := h.handler.Handle(ctx, upd, botAPI); err != nil {
+		return true, errors.Wrap(err, "handler")
+	}
+	return true, nil
 }

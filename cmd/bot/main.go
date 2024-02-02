@@ -37,11 +37,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to parse config: %v", err)
 	}
-	if errs := spec.Validate(); len(errs) > 0 {
-		fmt.Printf("There are %d validation errors:\n", len(errs))
-		for i, err := range errs {
-			fmt.Printf("  [%d] ERROR: %v\n", i, err)
-		}
+	if err := spec.Validate(); err != nil {
+		fmt.Printf("There are validation errors: %v\n", err)
 		os.Exit(1)
 	}
 

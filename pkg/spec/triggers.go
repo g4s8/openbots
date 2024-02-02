@@ -1,27 +1,141 @@
 package spec
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
+	"slices"
+
 	"gopkg.in/yaml.v3"
 )
 
 // Trigger is a handler trigger whcich configures when the handler should be
 // executed.
 type Trigger struct {
-	Message      *MessageTrigger      `yaml:"message"`
-	Callback     *CallbackTrigger     `yaml:"callback"`
-	Context      string               `yaml:"context"`
-	PreCheckout  *PreCheckoutTrigger  `yaml:"preCheckout"`
-	PostCheckout *PostCheckoutTrigger `yaml:"postCheckout"`
-	State        []StateCondition     `yaml:"state"`
+	Message      *MessageTrigger
+	Callback     *CallbackTrigger
+	Context      string
+	PreCheckout  *PreCheckoutTrigger
+	PostCheckout *PostCheckoutTrigger
+	State        []StateCondition
+	Fallback     bool
 }
 
-func (t *Trigger) validate() (errs []error) {
-	errs = make([]error, 0)
-	if t.Message == nil && t.Context == "" && t.Callback == nil &&
-		t.PreCheckout == nil && t.PostCheckout == nil {
-		errs = append(errs, errors.New("empty trigger"))
+func (t *Trigger) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.AliasNode {
+		return t.UnmarshalYAML(node.Alias)
 	}
+
+	switch node.Kind {
+	case yaml.ScalarNode:
+		if node.Value == "*" {
+			t.Fallback = true
+			return nil
+		}
+		t.Message = &MessageTrigger{Text: []string{node.Value}}
+	case yaml.SequenceNode:
+		var s Strings
+		if err := node.Decode(&s); err != nil {
+			return err
+		}
+		t.Message = &MessageTrigger{Text: s}
+	case yaml.MappingNode:
+		var schema struct {
+			Message      *MessageTrigger      `yaml:"message"`
+			Callback     *CallbackTrigger     `yaml:"callback"`
+			Context      string               `yaml:"context"`
+			PreCheckout  *PreCheckoutTrigger  `yaml:"preCheckout"`
+			PostCheckout *PostCheckoutTrigger `yaml:"postCheckout"`
+			State        []StateCondition     `yaml:"state"`
+			Fallback     bool                 `yaml:"fallback"`
+		}
+		if err := node.Decode(&schema); err != nil {
+			return fmt.Errorf("decode trigger: %w", err)
+		}
+		t.Message = schema.Message
+		t.Callback = schema.Callback
+		t.Context = schema.Context
+		t.PreCheckout = schema.PreCheckout
+		t.PostCheckout = schema.PostCheckout
+		t.State = schema.State
+		t.Fallback = schema.Fallback
+	default:
+		return fmt.Errorf("unexpected node kind: %v", node.Kind)
+	}
+	return nil
+}
+
+// TriggerType is a type of trigger.
+//
+//go:generate stringer -type=TriggerType
+type TriggerType int
+
+// Trigger types.
+const (
+	TriggerTypeMessage TriggerType = 1 + iota
+	TriggerTypeCallback
+	TriggerTypeContext
+	TriggerTypePreCheckout
+	TriggerTypePostCheckout
+	TriggerTypeState
+	TriggerTypeFallback
+)
+
+// Types returns a list of trigger types.
+func (t *Trigger) Types() []TriggerType {
+	var typ []TriggerType
+	if t.Message != nil {
+		typ = append(typ, TriggerTypeMessage)
+	}
+	if t.Callback != nil {
+		typ = append(typ, TriggerTypeCallback)
+	}
+	if t.Context != "" {
+		typ = append(typ, TriggerTypeContext)
+	}
+	if t.PreCheckout != nil {
+		typ = append(typ, TriggerTypePreCheckout)
+	}
+	if t.PostCheckout != nil {
+		typ = append(typ, TriggerTypePostCheckout)
+	}
+	if len(t.State) > 0 {
+		typ = append(typ, TriggerTypeState)
+	}
+	if t.Fallback {
+		typ = append(typ, TriggerTypeFallback)
+	}
+	return typ
+}
+
+// ErrEmptyTrigger is returned when no triggers are specified.
+var ErrEmptyTrigger = errors.New("empty trigger")
+
+// ErrInvalidTriggerCombination is returned when trigger combination is invalid.
+var ErrInvalidTriggerCombination = errors.New("invalid trigger combination")
+
+func (t *Trigger) validate() error {
+	types := t.Types()
+	if len(types) == 0 {
+		return ErrEmptyTrigger
+	}
+	// message, callback, preCheckout, postCheckout, fallback could be combined in any combination
+	// any type except fallback could be combined with context and state types
+	// fallback could not be combined with any other type
+	if len(types) > 1 && slices.Contains(types, TriggerTypeFallback) {
+		return fmt.Errorf("fallback with other triggers: %w", ErrInvalidTriggerCombination)
+	}
+	unmixable := []TriggerType{TriggerTypeMessage, TriggerTypeCallback, TriggerTypePreCheckout, TriggerTypePostCheckout}
+	var unmixableCnt int
+	for _, u := range unmixable {
+		if slices.Contains(types, u) {
+			unmixableCnt++
+		}
+	}
+	if unmixableCnt > 1 {
+		return fmt.Errorf("unmixable triggers (%s): %w", types, ErrInvalidTriggerCombination)
+	}
+
+	var errs []error
 	if t.Message != nil {
 		errs = append(errs, t.Message.validate()...)
 	}
@@ -33,7 +147,7 @@ func (t *Trigger) validate() (errs []error) {
 			errs = append(errs, sc.validate()...)
 		}
 	}
-	return
+	return errors.Join(errs...)
 }
 
 type MessageTrigger struct {
@@ -67,7 +181,7 @@ func (t *MessageTrigger) UnmarshalYAML(node *yaml.Node) error {
 		t.Text = schema.Text
 		t.Command = schema.Command
 	default:
-		return errors.Errorf("unexpected node kind: %v", node.Kind)
+		return fmt.Errorf("unexpected node kind: %v", node.Kind)
 	}
 	return nil
 }
@@ -98,7 +212,7 @@ func (ct *CallbackTrigger) UnmarshalYAML(node *yaml.Node) error {
 		}
 		ct.Data = schema.Data
 	default:
-		return errors.Errorf("unexpected node kind: %v", node.Kind)
+		return fmt.Errorf("unexpected node kind: %v", node.Kind)
 	}
 	return nil
 }

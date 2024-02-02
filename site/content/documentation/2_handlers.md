@@ -20,7 +20,46 @@ The trigger element is required for handler.
  * `postCheckout`: Triggers on post-checkout events (payments feature).
  * `state`: Array of state conditions, an additional filter to run the handler only if the user's state matches these conditions (states feature).
 
-Trigger must have at least one of `message`, `callback`, `context`, `preCheckout`, `postCheckout`, `state` and `context` could be added to other elements.
+Trigger should have at least one of `message`, `callback`, `context`, `preCheckout`, `postCheckout`,
+`state` and `context` could be added to other elements. If trigger is a string, it will be treated as
+message handler, there are two identical triggers below:
+```yml
+bot:
+  handlers:
+    # trigger message shorthand
+  - on: hello
+    reply:
+    - message: Hello
+```
+```yml
+bot:
+  handlers:
+    # full message trigger
+  - on:
+      message: hello
+    reply:
+    - message: hello
+```
+```yml
+bot:
+  handlers:
+    # the fullest message trigger version
+  - on:
+      message:
+        text: hello
+    reply:
+      message: hello
+```
+
+The wildcard trigger is handled as a default fallback trigger after trying all other triggers:
+```yml
+bot:
+  handlers:
+  - on: "*"
+    reply:
+      message: Fallback message
+```
+
 `message`, `callback`, `preCheckout`, `postCheckout` could not be mixed together.
 
 Example:

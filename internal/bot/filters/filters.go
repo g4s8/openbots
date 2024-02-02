@@ -28,6 +28,9 @@ type nopFilter struct{}
 
 func (nopFilter) Check(context.Context, *telegram.Update) (bool, error) { return true, nil }
 
+// Fallback filter always returns true
+var Fallback = nopFilter{}
+
 func Join(head types.EventFilter, tail ...types.EventFilter) FilterChain {
 	if head == nil {
 		head = nopFilter{}
