@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func DataLoader(sp types.StateProvider, secrets types.Secrets, s *spec.Data, log zerolog.Logger) (*data.Loader, error) {
+func DataLoader(cli *http.Client, sp types.StateProvider, secrets types.Secrets, s *spec.Data, log zerolog.Logger) (*data.Loader, error) {
 	if s.Fetch != nil {
 		cfg := data.LoaderConfig{
 			Method:  s.Fetch.Method,
@@ -17,7 +17,7 @@ func DataLoader(sp types.StateProvider, secrets types.Secrets, s *spec.Data, log
 			Headers: s.Fetch.Headers,
 		}
 		logger := log.With().Str("component", "data_loader").Logger()
-		return data.NewLoader(http.DefaultClient, cfg, sp, secrets, logger), nil
+		return data.NewLoader(cli, cfg, sp, secrets, logger), nil
 	}
 	return nil, nil
 }

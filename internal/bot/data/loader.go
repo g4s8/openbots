@@ -13,12 +13,14 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// LoaderConfig specifies data loader configuration options.
 type LoaderConfig struct {
 	Method  string
 	URL     string
 	Headers map[string]string
 }
 
+// Loader fetches data from the specified URL and stores it in the container.
 type Loader struct {
 	cli     *http.Client
 	cfg     LoaderConfig

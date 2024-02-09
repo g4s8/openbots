@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/http"
 	"os"
 	"slices"
 	"sync"
@@ -41,45 +42,79 @@ type eventHandler struct {
 	types.DataLoader
 }
 
+// Bot is a main bot instance.
 type Bot struct {
+	botAPI   *telegram.BotAPI
+	apiAddr  string
+	cp       *botctx.Provider
+	state    types.StateProvider
+	assets   types.Assets
+	payments types.PaymentProviders
+	secrets  types.Secrets
+	httpCli  *http.Client
+	log      zerolog.Logger
+
 	handlers    []*eventHandler
 	apiHandlers map[string][]api.Handler
+	apiService  *api.Service
 
-	apiAddr string
-
-	cp         *botctx.Provider
-	state      types.StateProvider
-	assets     types.Assets
-	payments   types.PaymentProviders
-	secrets    types.Secrets
-	botAPI     *telegram.BotAPI
-	apiService *api.Service
-	stopOnce   sync.Once
-	quitCh     chan struct{}
-	doneCh     chan struct{}
-
-	log zerolog.Logger
+	stopOnce sync.Once
+	quitCh   chan struct{}
+	doneCh   chan struct{}
 }
 
+// NewWithOptions creates a new bot instance with options or default values for empty options.
+func NewWithOptions(botAPI *telegram.BotAPI, opts ...Option) *Bot {
+	b := &Bot{
+		handlers:    make([]*eventHandler, 0),
+		apiHandlers: make(map[string][]api.Handler),
+		botAPI:      botAPI,
+		quitCh:      make(chan struct{}, 1),
+		doneCh:      make(chan struct{}, 1),
+		log:         zerolog.Nop(),
+	}
+
+	for _, opt := range opts {
+		opt(b)
+	}
+
+	if b.httpCli == nil {
+		b.httpCli = http.DefaultClient
+	}
+	if b.state == nil {
+		b.state = state.NewMemory(nil)
+	}
+	if b.assets == nil {
+		b.assets = assets.Dummy
+	}
+	if b.cp == nil {
+		b.cp = botctx.NewProvider(ctx.NewMemoryProvider())
+	}
+	if b.payments == nil {
+		b.payments = payments.EmptyProvider
+	}
+	if b.secrets == nil {
+		b.secrets = secrets.Stub
+	}
+
+	return b
+}
+
+// New creates a new bot instance with default values for empty options.
+// deprecated: use NewWithOptions instead
 func New(botAPI *telegram.BotAPI, state types.StateProvider,
 	context types.ContextProvider, assets types.Assets,
 	paymentProviders types.PaymentProviders, secrets types.Secrets,
 	apiAddr string, log zerolog.Logger,
 ) *Bot {
-	return &Bot{
-		handlers:    make([]*eventHandler, 0),
-		apiHandlers: make(map[string][]api.Handler),
-		apiAddr:     apiAddr,
-		cp:          botctx.NewProvider(context),
-		state:       state,
-		assets:      assets,
-		payments:    paymentProviders,
-		secrets:     secrets,
-		botAPI:      botAPI,
-		quitCh:      make(chan struct{}, 1),
-		doneCh:      make(chan struct{}, 1),
-		log:         log,
-	}
+	return NewWithOptions(botAPI,
+		WithStateProvider(state),
+		WithContextProvider(context),
+		WithAssets(assets),
+		WithPaymentProviders(paymentProviders),
+		WithSecrets(secrets),
+		WithAPIAddr(apiAddr),
+		WithLogger(log))
 }
 
 func NewFromSpec(s *spec.Bot) (*Bot, error) {
@@ -253,10 +288,10 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 			}
 		}
 		if h.Webhook != nil {
-			hs = append(hs, adaptors.Webhook(h.Webhook, b.state, b.secrets, b.log))
+			hs = append(hs, adaptors.Webhook(h.Webhook, b.httpCli, b.state, b.secrets, b.log))
 		}
 		if h.Data != nil {
-			d, err := adaptors.DataLoader(b.state, b.secrets, h.Data, b.log)
+			d, err := adaptors.DataLoader(b.httpCli, b.state, b.secrets, h.Data, b.log)
 			if err != nil {
 				return errors.Wrap(err, "create data loader")
 			}

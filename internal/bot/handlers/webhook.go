@@ -20,19 +20,19 @@ import (
 
 var _ types.Handler = (*Webhook)(nil)
 
+// Webhook handler sends HTTP request to the specified URL.
 type Webhook struct {
 	url     *url.URL
+	cli     *http.Client
 	method  string
 	headers map[string]string
 	data    map[string]string
 	sp      types.StateProvider
 	secrets types.Secrets
 	log     zerolog.Logger
-
-	cli *http.Client
 }
 
-func NewWebhook(url *url.URL,
+func NewWebhook(url *url.URL, cli *http.Client,
 	method string, headers map[string]string,
 	data map[string]string, sp types.StateProvider,
 	secrets types.Secrets, log zerolog.Logger,
@@ -44,7 +44,7 @@ func NewWebhook(url *url.URL,
 		data:    data,
 		sp:      sp,
 		secrets: secrets,
-		cli:     http.DefaultClient,
+		cli:     cli,
 		log:     log.With().Str("handler", "webhook").Logger(),
 	}
 }

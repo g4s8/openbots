@@ -2,6 +2,7 @@ package adaptors
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/g4s8/openbots/internal/bot/handlers"
 	"github.com/g4s8/openbots/pkg/spec"
@@ -120,8 +121,8 @@ func Replies(bot *telegram.BotAPI, sp types.StateProvider, secrets types.Secrets
 	return &multiHandler{handlers}, nil
 }
 
-func Webhook(s *spec.Webhook, sp types.StateProvider, secrets types.Secrets, log zerolog.Logger) types.Handler {
-	return handlers.NewWebhook(s.URL, s.Method, s.Headers, s.Data, sp, secrets, log)
+func Webhook(s *spec.Webhook, cli *http.Client, sp types.StateProvider, secrets types.Secrets, log zerolog.Logger) types.Handler {
+	return handlers.NewWebhook(s.URL, cli, s.Method, s.Headers, s.Data, sp, secrets, log)
 }
 
 func newEdit(s *spec.Edit, sp types.StateProvider, secrets types.Secrets, log zerolog.Logger) (types.Handler, error) {
