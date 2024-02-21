@@ -93,6 +93,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	err := handler.Call(ctx, payload)
 	if err == nil {
+		s.logger.Info().Interface("payload", payload.Payload).Int("chat_id", int(payload.ChatID)).Msg("Handler called")
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}

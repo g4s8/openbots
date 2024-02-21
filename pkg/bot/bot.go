@@ -314,14 +314,33 @@ func (b *Bot) SetupHandlersFromSpec(src []*spec.Handler) error {
 func (b *Bot) SetupApiHandlersFromSpec(src []*spec.ApiHandler) error {
 	for _, h := range src {
 		for _, act := range h.Actions {
+			var hs []api.Handler
 			if act.SendMessage != nil {
-				handler, err := adaptors.MessageRepply(b.botAPI, b.state, b.secrets, act.SendMessage,
+				reply, err := adaptors.MessageRepply(b.botAPI, b.state, b.secrets, act.SendMessage,
 					b.log.With().Str("component", "api").Str("handler", h.ID).Logger())
 				if err != nil {
 					return errors.Wrap(err, "create api message reply handler")
 				}
-				b.ApiHandler(h.ID, internal_api.NewSendMessage(act.ChatID, handler))
+				hs = append(hs, reply)
 			}
+
+			if act.Context != nil {
+				if act.Context.Set != "" {
+					hs = append(hs, handlers.NewContextSetter(b.cp, act.Context.Set, b.log))
+				}
+				if act.Context.Delete != "" {
+					hs = append(hs, handlers.NewContextDeleter(b.cp, act.Context.Delete, b.log))
+				}
+			}
+
+			if act.State != nil {
+				hs = append(hs, handlers.NewStateHandlerFromSpec(b.state, act.State, b.log))
+			}
+
+			for _, step := range hs {
+				b.ApiHandler(h.ID, internal_api.NewSendMessage(act.ChatID, step))
+			}
+			b.log.Info().Int("handler", len(hs)).Str("id", h.ID).Msg("api handler registered")
 		}
 	}
 	return nil

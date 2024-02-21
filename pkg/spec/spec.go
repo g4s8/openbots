@@ -29,6 +29,8 @@ type Bot struct {
 
 // Handler specification declares bot handlers.
 type Handler struct {
+	// ID is a unique handler identifier.
+	ID       string      `yaml:"id"`
 	Trigger  *Trigger    `yaml:"on"`
 	Replies  []*Reply    `yaml:"reply"`
 	Webhook  *Webhook    `yaml:"webhook"`
@@ -38,6 +40,7 @@ type Handler struct {
 	Validate *Validators `yaml:"validate"`
 }
 
+// ErrNoTriggerConfig is an error for missing trigger configuration.
 var ErrNoTriggerConfig = errors.New("no trigger configuration")
 
 func (h *Handler) validate() error {

@@ -78,6 +78,7 @@ func (h *MessageReply) Handle(ctx context.Context, upd *telegram.Update, _ *tele
 }
 
 func (h *MessageReply) Call(ctx context.Context, req api.Request) error {
+	// TODO: refactor similar logic with Handle
 	state := state.NewUserState()
 	defer state.Close()
 

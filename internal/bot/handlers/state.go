@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/g4s8/openbots/internal/bot/interpolator"
+	"github.com/g4s8/openbots/pkg/api"
 	"github.com/g4s8/openbots/pkg/secrets"
 	"github.com/g4s8/openbots/pkg/spec"
 	"github.com/g4s8/openbots/pkg/state"
@@ -13,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// StateHandler is a handler for state changes.
 type StateHandler struct {
 	provider types.StateProvider
 	secrets  types.Secrets
@@ -32,6 +34,33 @@ func (h *StateHandler) Handle(ctx context.Context, update *telegram.Update, _ *t
 	}
 	for _, op := range h.ops {
 		interpolator := interpolator.New(state.Map(), secretMap, update)
+		if err := op.Apply(state, interpolator.Interpolate); err != nil {
+			return errors.Wrap(err, "apply state op")
+		}
+	}
+	if err := h.provider.Update(ctx, uid, state); err != nil {
+		return errors.Wrap(err, "update state")
+	}
+	return nil
+}
+
+func (h *StateHandler) Call(ctx context.Context, req api.Request) error {
+	// TODO: refactor similar logic with Handle
+	uid := req.ChatID
+	state := state.NewUserState()
+	if err := h.provider.Load(ctx, uid, state); err != nil {
+		return errors.Wrap(err, "load state")
+	}
+	secretMap, err := h.secrets.Get(ctx)
+	if err != nil {
+		return errors.Wrap(err, "get secrets")
+	}
+	for _, op := range h.ops {
+		interpolator := interpolator.NewWithOps(
+			interpolator.WithState(state.Map()),
+			interpolator.WithSecrets(secretMap),
+			interpolator.WithData(req.Payload),
+		)
 		if err := op.Apply(state, interpolator.Interpolate); err != nil {
 			return errors.Wrap(err, "apply state op")
 		}

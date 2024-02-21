@@ -62,7 +62,18 @@ func (t *defaultTemplate) Format(ctx *templateContext) (string, error) {
 	for k, v := range ctx.Secrets {
 		secrets[k] = types.Secret(v)
 	}
-	intp := interpolator.New(ctx.State, secrets, ctx.Update)
+	var opts []interpolator.InterpolatorOp
+	if ctx.Update != nil {
+		opts = append(opts, interpolator.WithUpdate(ctx.Update))
+	}
+	if ctx.State != nil {
+		opts = append(opts, interpolator.WithState(ctx.State))
+	}
+	if dataMap, ok := ctx.Data.(map[string]string); ok {
+		opts = append(opts, interpolator.WithData(dataMap))
+	}
+	intp := interpolator.NewWithOps(opts...)
+	// ctx.State, secrets, ctx.Update)
 	processed := intp.Interpolate(t.src)
 	return processed, nil
 }
