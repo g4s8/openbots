@@ -17,15 +17,14 @@ type templateContext struct {
 	Data    any
 }
 
-func newTemplateContext(upd *telegram.Update, state types.State, secrets map[string]types.Secret, Data any) *templateContext {
-	stateMap := state.Map()
+func newTemplateContext(upd *telegram.Update, state map[string]string, secrets map[string]types.Secret, Data any) *templateContext {
 	secretMap := make(map[string]string, len(secrets))
 	for k, v := range secrets {
 		secretMap[k] = string(v)
 	}
 	return &templateContext{
 		Update:  upd,
-		State:   stateMap,
+		State:   state,
 		Secrets: secretMap,
 		Data:    Data,
 	}

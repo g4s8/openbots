@@ -43,7 +43,7 @@ func MessageRepply(bot *telegram.BotAPI,
 	if err != nil {
 		return nil, errors.Wrap(err, "create template")
 	}
-	return handlers.NewMessageReply(bot, sp, secrets, tpl, log, modifiers...), nil
+	return handlers.NewMessageReply(bot, tpl, log, modifiers...), nil
 }
 
 func CallbackReply(sp types.StateProvider, secrets types.Secrets, s *spec.CallbackReply) *handlers.CallbackReply {

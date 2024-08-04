@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/g4s8/openbots/pkg/state"
 	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
@@ -64,19 +63,11 @@ func (h *MessageEdit) Handle(ctx context.Context, upd *telegram.Update, api *tel
 		return ErrNoCallbackMessage
 	}
 
-	msgID := upd.CallbackQuery.Message.MessageID
-	chatID := ChatID(upd)
-	state := state.NewUserState()
-	defer state.Close()
-	if err := h.sp.Load(ctx, chatID, state); err != nil {
-		return errors.Wrap(err, "load user state")
-	}
-	secretMap, err := h.secrets.Get(ctx)
-	if err != nil {
-		return errors.Wrap(err, "get secrets")
-	}
-	templateCtx := newTemplateContext(upd, state, secretMap, nil)
-	text, err := h.template.Format(templateCtx)
+	uctx := UpdateContextFromCtx(ctx)
+
+	msgID := uctx.MessageID()
+	chatID := uctx.ChatID()
+	text, err := h.template.Format(uctx.templateContext())
 	if err != nil {
 		return errors.Wrap(err, "format template")
 	}
@@ -88,6 +79,7 @@ func (h *MessageEdit) Handle(ctx context.Context, upd *telegram.Update, api *tel
 		Str("origin_text", text).
 		Msg("Edit message")
 
+	ip := uctx.Interpolator()
 	var msg telegram.Chattable
 	switch mode := h.mode(text); mode {
 	case editMessageCaptionMode:
@@ -95,9 +87,9 @@ func (h *MessageEdit) Handle(ctx context.Context, upd *telegram.Update, api *tel
 	case editMessageTextMode:
 		msg = telegram.NewEditMessageText(int64(chatID), msgID, text)
 	case editMessageTextKeyboardMode:
-		msg = telegram.NewEditMessageReplyMarkup(int64(chatID), msgID, h.keyboard.telegramMarkup())
+		msg = telegram.NewEditMessageReplyMarkup(int64(chatID), msgID, h.keyboard.telegramMarkup(ip))
 	case editMessageTextKeyboardMode | editMessageTextMode:
-		msg = telegram.NewEditMessageTextAndMarkup(int64(chatID), msgID, text, h.keyboard.telegramMarkup())
+		msg = telegram.NewEditMessageTextAndMarkup(int64(chatID), msgID, text, h.keyboard.telegramMarkup(ip))
 	default:
 		return fmt.Errorf("unsupported edit message mode: %d", mode)
 	}

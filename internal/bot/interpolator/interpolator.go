@@ -1,6 +1,7 @@
 package interpolator
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -112,4 +113,8 @@ func (i *Interpolator) expander() func(string) string {
 
 func (i *Interpolator) Interpolate(text string) string {
 	return os.Expand(text, i.expander())
+}
+
+func (i *Interpolator) InterpolateS(s fmt.Stringer) string {
+	return i.Interpolate(s.String())
 }

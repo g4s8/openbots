@@ -52,6 +52,7 @@ type Bot struct {
 	payments types.PaymentProviders
 	secrets  types.Secrets
 	httpCli  *http.Client
+	ucp      *handlers.UpdateContextProvider
 	log      zerolog.Logger
 
 	handlers    []*eventHandler
@@ -96,6 +97,7 @@ func NewWithOptions(botAPI *telegram.BotAPI, opts ...Option) *Bot {
 	if b.secrets == nil {
 		b.secrets = secrets.Stub
 	}
+	b.ucp = handlers.NewUpdateContextProvider(b.secrets, b.state)
 
 	return b
 }
@@ -456,6 +458,12 @@ func (b *Bot) HandleUpdateErr(ctx context.Context, upd *telegram.Update) error {
 		}
 		log.Trace().Msg("Context closed")
 	}()
+
+	uctx, err := b.ucp.NewContext(ctx, upd)
+	if err != nil {
+		return errors.Wrap(err, "create update context")
+	}
+	ctx = uctx
 
 	var errs []error
 	hs := make([]handlerWithData, 0)
