@@ -15,8 +15,7 @@ func ChatID(upd *telegram.Update) types.ChatID {
 }
 
 func rawChatID(upd *telegram.Update) int64 {
-	chat := upd.FromChat()
-	if chat != nil {
+	if chat := upd.FromChat(); chat != nil {
 		return chat.ID
 	}
 	return -1

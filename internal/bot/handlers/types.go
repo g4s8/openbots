@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/g4s8/openbots/internal/bot/data"
 	"github.com/g4s8/openbots/internal/bot/interpolator"
@@ -14,16 +16,12 @@ import (
 type Interpolator interface {
 	Interpolate(string) string
 }
-type UpdateContextProvider struct {
-	secrets types.Secrets
-	state   types.StateProvider
-}
 
 type UpdateContext struct {
 	upd     *telegram.Update
 	state   map[string]string
 	secrets map[string]types.Secret
-	data    any
+	data    *types.DataContainer
 }
 
 func (c *UpdateContext) ChatID() types.ChatID {
@@ -35,7 +33,8 @@ func (c *UpdateContext) MessageID() int {
 }
 
 func (c *UpdateContext) templateContext() *templateContext {
-	return newTemplateContext(c.upd, c.state, c.secrets, c.data)
+	data := c.data.Get()
+	return newTemplateContext(c.upd, c.state, c.secrets, data)
 }
 
 func (c *UpdateContext) Interpolator() Interpolator {
@@ -44,19 +43,41 @@ func (c *UpdateContext) Interpolator() Interpolator {
 		interpolator.WithSecrets(c.secrets),
 		interpolator.WithUpdate(c.upd),
 	}
-	if dataMap, ok := c.data.(map[string]string); ok {
-		opts = append(opts, interpolator.WithData(dataMap))
+	data := c.data.Get()
+	if dataMap, ok := data.(map[string]any); ok {
+		m := make(map[string]string, len(dataMap))
+		for k, v := range dataMap {
+			m[k] = fmt.Sprintf("%v", v)
+		}
+		opts = append(opts, interpolator.WithData(m))
 	}
 	return interpolator.NewWithOps(opts...)
+}
+
+func (c *UpdateContext) String() string {
+	var sb strings.Builder
+	sb.WriteString("UpdateContext{")
+	sb.WriteString(fmt.Sprintf("state: %v, ", c.state))
+	sb.WriteString(fmt.Sprintf("secrets: %v, ", c.secrets))
+	sb.WriteString(fmt.Sprintf("data: %v", c.data))
+	sb.WriteString("}")
+	return sb.String()
 }
 
 type updateContextKey struct{}
 
 func UpdateContextFromCtx(ctx context.Context) *UpdateContext {
 	if uctx, ok := ctx.Value(updateContextKey{}).(*UpdateContext); ok {
-		return uctx
+		res := uctx
+		res.data = data.FromCtx(ctx)
+		return res
 	}
 	return &UpdateContext{}
+}
+
+type UpdateContextProvider struct {
+	secrets types.Secrets
+	state   types.StateProvider
 }
 
 func NewUpdateContextProvider(secrets types.Secrets, state types.StateProvider) *UpdateContextProvider {
@@ -71,19 +92,17 @@ func (cp *UpdateContextProvider) NewContext(ctx context.Context, upd *telegram.U
 	defer state.Close()
 
 	chatID := ChatID(upd)
-	if err := cp.state.Load(context.Background(), chatID, state); err != nil {
+	if err := cp.state.Load(ctx, chatID, state); err != nil {
 		return nil, errors.Wrap(err, "load state")
 	}
-	secretMap, err := cp.secrets.Get(context.Background())
+	secretMap, err := cp.secrets.Get(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "get secrets")
 	}
-	dp := data.FromCtx(ctx)
 	c := &UpdateContext{
 		upd:     upd,
 		state:   state.Map(),
 		secrets: secretMap,
-		data:    dp.Get(),
 	}
 	return context.WithValue(ctx, updateContextKey{}, c), nil
 }

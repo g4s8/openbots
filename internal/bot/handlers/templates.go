@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"fmt"
 	"text/template"
 
 	"github.com/g4s8/openbots/internal/bot/interpolator"
@@ -68,11 +69,19 @@ func (t *defaultTemplate) Format(ctx *templateContext) (string, error) {
 	if ctx.State != nil {
 		opts = append(opts, interpolator.WithState(ctx.State))
 	}
-	if dataMap, ok := ctx.Data.(map[string]string); ok {
-		opts = append(opts, interpolator.WithData(dataMap))
+	var data map[string]string
+	if d, ok := ctx.Data.(map[string]string); ok {
+		data = d
+	} else if d, ok := ctx.Data.(map[string]interface{}); ok {
+		data = make(map[string]string, len(d))
+		for k, v := range d {
+			data[k] = fmt.Sprintf("%v", v)
+		}
+	}
+	if data != nil {
+		opts = append(opts, interpolator.WithData(data))
 	}
 	intp := interpolator.NewWithOps(opts...)
-	// ctx.State, secrets, ctx.Update)
 	processed := intp.Interpolate(t.src)
 	return processed, nil
 }

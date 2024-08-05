@@ -112,7 +112,9 @@ func (i *Interpolator) expander() func(string) string {
 }
 
 func (i *Interpolator) Interpolate(text string) string {
-	return os.Expand(text, i.expander())
+	res := os.Expand(text, i.expander())
+	fmt.Printf("Interpolated: %q -> %q\n", text, res)
+	return res
 }
 
 func (i *Interpolator) InterpolateS(s fmt.Stringer) string {
