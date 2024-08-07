@@ -23,22 +23,19 @@ type StateHandler struct {
 }
 
 func (h *StateHandler) Handle(ctx context.Context, update *telegram.Update, _ *telegram.BotAPI) error {
-	uid := ChatID(update)
+	uctx := UpdateContextFromCtx(ctx)
+
 	state := state.NewUserState()
-	if err := h.provider.Load(ctx, uid, state); err != nil {
+	if err := h.provider.Load(ctx, uctx.ChatID(), state); err != nil {
 		return errors.Wrap(err, "load state")
 	}
-	secretMap, err := h.secrets.Get(ctx)
-	if err != nil {
-		return errors.Wrap(err, "get secrets")
-	}
+	interpolator := uctx.Interpolator()
 	for _, op := range h.ops {
-		interpolator := interpolator.New(state.Map(), secretMap, update)
 		if err := op.Apply(state, interpolator.Interpolate); err != nil {
 			return errors.Wrap(err, "apply state op")
 		}
 	}
-	if err := h.provider.Update(ctx, uid, state); err != nil {
+	if err := h.provider.Update(ctx, uctx.ChatID(), state); err != nil {
 		return errors.Wrap(err, "update state")
 	}
 	return nil
