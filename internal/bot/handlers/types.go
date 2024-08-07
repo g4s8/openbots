@@ -33,7 +33,10 @@ func (c *UpdateContext) MessageID() int {
 }
 
 func (c *UpdateContext) templateContext() *templateContext {
-	data := c.data.Get()
+	var data any
+	if c.data != nil {
+		data = c.data.Get()
+	}
 	return newTemplateContext(c.upd, c.state, c.secrets, data)
 }
 
@@ -43,7 +46,10 @@ func (c *UpdateContext) Interpolator() Interpolator {
 		interpolator.WithSecrets(c.secrets),
 		interpolator.WithUpdate(c.upd),
 	}
-	data := c.data.Get()
+	var data any
+	if c.data != nil {
+		data = c.data.Get()
+	}
 	if dataMap, ok := data.(map[string]any); ok {
 		m := make(map[string]string, len(dataMap))
 		for k, v := range dataMap {
