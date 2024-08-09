@@ -8,7 +8,7 @@ import (
 )
 
 // Strings is a slice of strings that can be unmarshalled from YAML scalars or
-// sequences.
+// sequences or JSON string or array of strings.
 type Strings []string
 
 func (s *Strings) UnmarshalYAML(node *yaml.Node) error {
