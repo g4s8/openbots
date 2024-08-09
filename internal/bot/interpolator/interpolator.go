@@ -70,7 +70,9 @@ func (i *Interpolator) expander() func(string) string {
 		if msg := upd.Message; msg != nil {
 			data["message.id"] = strconv.Itoa(msg.MessageID)
 			data["message.text"] = msg.Text
-			data["message.from.id"] = strconv.FormatInt(msg.From.ID, 10)
+			if from := msg.From; from != nil {
+				data["message.from.id"] = strconv.FormatInt(from.ID, 10)
+			}
 		}
 		if chat := upd.FromChat(); chat != nil {
 			data["chat.id"] = strconv.FormatInt(chat.ID, 10)

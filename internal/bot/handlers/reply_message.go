@@ -41,7 +41,7 @@ func NewMessageReply(
 	}
 }
 
-func (h *MessageReply) Handle(ctx context.Context, upd *telegram.Update, _ *telegram.BotAPI) error {
+func (h *MessageReply) Handle(ctx context.Context, _ *telegram.Update, bot *telegram.BotAPI) error {
 	updCtx := UpdateContextFromCtx(ctx)
 
 	chatID := updCtx.ChatID()

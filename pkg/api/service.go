@@ -16,22 +16,24 @@ import (
 var rePath = regexp.MustCompile(`^/handlers/([a-zA-Z0-9-]+)$`)
 
 type Service struct {
-	cfg      Config
-	handlers map[string]Handler
-	logger   zerolog.Logger
+	cfg         Config
+	handlers    map[string]Handler
+	logger      zerolog.Logger
+	rootHandler http.Handler
 
 	srv *http.Server
 }
 
-func NewService(cfg Config, handlers map[string]Handler) *Service {
-	return NewServiceWithLogger(cfg, handlers, zerolog.Nop())
+func NewService(cfg Config, handlers map[string]Handler, rootHandler http.Handler) *Service {
+	return NewServiceWithLogger(cfg, handlers, rootHandler, zerolog.Nop())
 }
 
-func NewServiceWithLogger(cfg Config, handlers map[string]Handler, logger zerolog.Logger) *Service {
+func NewServiceWithLogger(cfg Config, handlers map[string]Handler, rootHandler http.Handler, logger zerolog.Logger) *Service {
 	return &Service{
-		cfg:      cfg,
-		handlers: handlers,
-		logger:   logger,
+		cfg:         cfg,
+		handlers:    handlers,
+		rootHandler: rootHandler,
+		logger:      logger,
 	}
 }
 
@@ -126,6 +128,7 @@ func (s *Service) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.Handle("/handlers/", s)
 	mux.Handle("/health", &health{}) // TODO: impl
+	mux.Handle("/", s.rootHandler)
 	s.srv.Handler = mux
 	ln, err := net.Listen("tcp", s.srv.Addr)
 	if err != nil {

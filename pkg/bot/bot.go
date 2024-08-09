@@ -13,6 +13,7 @@ import (
 	goerr "errors"
 
 	"github.com/g4s8/openbots/internal/bot/adaptors"
+	apiTypes "github.com/g4s8/openbots/internal/bot/api"
 	internal_api "github.com/g4s8/openbots/internal/bot/api"
 	botctx "github.com/g4s8/openbots/internal/bot/ctx"
 	"github.com/g4s8/openbots/internal/bot/data"
@@ -414,7 +415,10 @@ func (b *Bot) HandlerAPI(cfg api.Config) *api.Service {
 	for id, hs := range b.apiHandlers {
 		handlers[id] = &apiHandlerGroup{handlers: hs}
 	}
-	return api.NewServiceWithLogger(cfg, handlers, b.log.With().Str("component", "api_svc").Logger())
+	root := apiTypes.NewReplyService(b.botAPI, b.secrets, b.state, b.log.With().
+		Str("component", "api_reply_svc").Logger())
+	return api.NewServiceWithLogger(cfg, handlers, root,
+		b.log.With().Str("component", "api_svc").Logger())
 }
 
 func (b *Bot) Stop() error {
