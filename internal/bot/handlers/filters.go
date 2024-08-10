@@ -6,6 +6,7 @@ import (
 	"github.com/g4s8/openbots/pkg/spec"
 	"github.com/g4s8/openbots/pkg/types"
 	telegram "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/gobwas/glob"
 	"github.com/pkg/errors"
 )
 
@@ -59,16 +60,20 @@ func messageHasText(texts []string) messageCriteria {
 
 // CallbackFilter check update callback data.
 type CallbackFilter struct {
-	callback string
+	callback glob.Glob
 }
 
 func (h *CallbackFilter) Check(ctx context.Context, update *telegram.Update) (bool, error) {
-	return update.CallbackQuery != nil && update.CallbackQuery.Data == h.callback, nil
+	return update.CallbackQuery != nil && h.callback.Match(update.CallbackQuery.Data), nil
 }
 
 func NewCallbackFilterFromSpec(s *spec.CallbackTrigger) (types.EventFilter, error) {
+	g, err := glob.Compile(s.Data)
+	if err != nil {
+		return nil, errors.Wrap(err, "compile glob")
+	}
 	return &CallbackFilter{
-		callback: s.Data,
+		callback: g,
 	}, nil
 }
 

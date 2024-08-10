@@ -90,6 +90,9 @@ func (i *Interpolator) expander() func(string) string {
 			data["user.username"] = user.UserName
 			data["user.language_code"] = user.LanguageCode
 		}
+		if cb := upd.CallbackData(); cb != "" {
+			data["callback.data"] = cb
+		}
 	}
 
 	for k, v := range i.data {
