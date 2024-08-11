@@ -13,8 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
-	"github.com/g4s8/openbots/internal/bot/interpolator"
-	"github.com/g4s8/openbots/pkg/state"
 	"github.com/g4s8/openbots/pkg/types"
 )
 
@@ -58,16 +56,9 @@ type WebhookPayload struct {
 }
 
 func (h *Webhook) Handle(ctx context.Context, upd *telegram.Update, _ *telegram.BotAPI) error {
-	state := state.NewUserState()
-	err := h.sp.Load(ctx, ChatID(upd), state)
-	if err != nil {
-		return errors.Wrap(err, "load state")
-	}
-	secretMap, err := h.secrets.Get(ctx)
-	if err != nil {
-		return errors.Wrap(err, "get secrets")
-	}
-	interpolator := interpolator.New(state.Map(), secretMap, upd)
+	uctx := UpdateContextFromCtx(ctx)
+	interpolator := uctx.Interpolator()
+
 	values := make(map[string]string, len(h.data))
 	for k, v := range h.data {
 		values[k] = interpolator.Interpolate(v)
@@ -84,7 +75,8 @@ func (h *Webhook) Handle(ctx context.Context, upd *telegram.Update, _ *telegram.
 	}
 
 	br := bytes.NewReader(body)
-	req, err := http.NewRequestWithContext(ctx, h.method, h.url.String(), br)
+	u := interpolator.Interpolate(h.url.String())
+	req, err := http.NewRequestWithContext(ctx, h.method, u, br)
 	if err != nil {
 		return errors.Wrap(err, "make HTTP request")
 	}
