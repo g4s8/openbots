@@ -75,8 +75,13 @@ func (h *Webhook) Handle(ctx context.Context, upd *telegram.Update, _ *telegram.
 	}
 
 	br := bytes.NewReader(body)
-	u := interpolator.Interpolate(h.url.String())
-	req, err := http.NewRequestWithContext(ctx, h.method, u, br)
+	u, err := url.Parse(interpolator.Interpolate(h.url.String()))
+	if err != nil {
+		return errors.Wrap(err, "parse interpolated URL")
+	}
+	queryEscape(u)
+
+	req, err := http.NewRequestWithContext(ctx, h.method, u.String(), br)
 	if err != nil {
 		return errors.Wrap(err, "make HTTP request")
 	}
@@ -99,4 +104,14 @@ func (h *Webhook) Handle(ctx context.Context, upd *telegram.Update, _ *telegram.
 	}
 	h.log.Printf("Call HTTP %s %s: %d", h.method, h.url, resp.StatusCode)
 	return nil
+}
+
+func queryEscape(u *url.URL) {
+	q := u.Query()
+	for k, vv := range q {
+		for i, v := range vv {
+			q[k][i] = url.QueryEscape(v)
+		}
+	}
+	u.RawQuery = q.Encode()
 }
