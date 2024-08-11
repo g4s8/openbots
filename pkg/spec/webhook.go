@@ -33,6 +33,7 @@ func (ch *Webhook) UnmarshalYAML(node *yaml.Node) error {
 	if err != nil {
 		return errors.Wrap(err, "parse URL")
 	}
+	queryEscape(u)
 	ch.URL = u
 	ch.Method = internal.Method
 	if ch.Method == "" {
@@ -45,4 +46,14 @@ func (ch *Webhook) UnmarshalYAML(node *yaml.Node) error {
 		ch.Data = internal.Data
 	}
 	return nil
+}
+
+func queryEscape(u *url.URL) {
+	q := u.Query()
+	for k, vv := range q {
+		for i, v := range vv {
+			q[k][i] = url.QueryEscape(v)
+		}
+	}
+	u.RawQuery = q.Encode()
 }
