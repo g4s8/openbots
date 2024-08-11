@@ -37,6 +37,10 @@ func NewServiceWithLogger(cfg Config, handlers map[string]Handler, rootHandler h
 	}
 }
 
+func (s *Service) Root() http.Handler {
+	return s.rootHandler
+}
+
 func (s *Service) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if req.Body != nil {
 		defer req.Body.Close()
